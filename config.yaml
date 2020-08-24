@@ -1,0 +1,7 @@
+contentType:
+  - type: "Moodboard Reece Product"
+    fieldMapping:
+      - csvProperty: ProductName
+        acousticProperty: productName
+        propertyType: text
+
