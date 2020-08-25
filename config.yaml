@@ -1,7 +1,14 @@
 contentType:
-  - type: "Moodboard Reece Product"
+  - type: "f5fe4c5c-67db-465a-aba6-75618cdcbf30"
+    name: [productCode,productTitle]
     fieldMapping:
-      - csvProperty: ProductName
-        acousticProperty: productName
+      - csvProperty: productCode
+        acousticProperty: productCode
+        propertyType: number
+      - csvProperty: productTitle
+        acousticProperty: productTitle
         propertyType: text
+      - csvProperty: productUrl
+        acousticProperty: productUrl
+        propertyType: link
 

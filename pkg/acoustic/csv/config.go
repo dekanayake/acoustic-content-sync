@@ -22,6 +22,7 @@ type ContentFieldMapping struct {
 type ContentTypeMapping struct {
 	Type string                        `yaml:"type"`
 	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
+	Name []string `yaml:"name"`
 }
 
 type ContentTypesMapping struct {

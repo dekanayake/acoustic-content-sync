@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"github.com/dekanayake/acoustic-content-sync/pkg/context"
 	log "github.com/sirupsen/logrus"
 	koazee "github.com/wesovilabs/koazee"
 	"gopkg.in/resty.v1"
@@ -19,7 +20,7 @@ type authClient struct {
 
 func NewAuthClient(acousticAuthUrl string) AuthClient {
 	return &authClient{
-		c: *resty.New(),
+		c: *resty.New().SetDebug(context.IsDebugEnabled()),
 		acousticAuthUrl: acousticAuthUrl,
 	}
 }

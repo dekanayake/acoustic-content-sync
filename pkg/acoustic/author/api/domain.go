@@ -2,18 +2,18 @@ package api
 
 import "errors"
 
-type Type string
+type FieldType string
 
 const (
-	Text Type = "text"
-	Number Type = "number"
-	Boolean Type = "toggle"
-	Link Type = "link"
-	Date Type = "date"
-	Category Type = "category"
-	File Type = "file"
-	Video Type = "video"
-	Image Type = "image"
+	Text     FieldType = "text"
+	Number   FieldType = "number"
+	Boolean  FieldType = "toggle"
+	Link     FieldType = "link"
+	Date     FieldType = "date"
+	Category FieldType = "category"
+	File     FieldType = "file"
+	Video    FieldType = "video"
+	Image    FieldType = "image"
 )
 
 
@@ -25,17 +25,14 @@ type Content struct {
 	LibraryID string `json:"libraryId"`
 }
 
-type Convertor func(data interface{}, element Element) (Element,error)
 
 type Element interface {
-	Enrich(element interface{}, converter Convertor) (Element,error)
+	Convert(data interface{}) (Element,error)
 }
 
 type element struct {
-	ElementType Type `json:"elementType"`
+	ElementType FieldType `json:"elementType"`
 }
-
-
 
 type TextElement struct {
 	Value string `json:"value"`
@@ -43,7 +40,7 @@ type TextElement struct {
 }
 
 type NumberElement struct {
-	Value int `json:"value"`
+	Value int64 `json:"value"`
 	element
 }
 
@@ -53,9 +50,9 @@ type BooleanElement struct {
 }
 
 type LinkElement struct {
-	LinkURL int `json:"linkURL"`
-	LinkText int `json:"linkText"`
-	LinkTitle int `json:"linkTitle"`
+	LinkURL string `json:"linkURL"`
+	LinkText string `json:"linkText"`
+	LinkTitle string `json:"linkTitle"`
 	element
 }
 
@@ -100,36 +97,36 @@ type ContentError struct {
 	Locale interface{} `json:"locale"`
 }
 
-func (acousticElement element) Enrich(element interface{}, converter Convertor) (Element,error) {
-	convertedElement,err := converter(element,&acousticElement)
-	return convertedElement,err
+func (element element)  Convert(data interface{}) (Element,error) {
+	return nil, errors.New("Not implementd need to override in extending elements")
 }
 
 func Build(fieldType string) (Element,error) {
-	switch fieldType {
+	fieldTypeConst := FieldType(fieldType)
+	switch fieldTypeConst {
 	case Text:
 		element := TextElement{}
-		element.ElementType = fieldType
+		element.ElementType = fieldTypeConst
 		return element,nil
 	case Number:
 		element := NumberElement{}
-		element.ElementType = fieldType
+		element.ElementType = fieldTypeConst
 		return element,nil
 	case Boolean:
 		element := BooleanElement{}
-		element.ElementType = fieldType
+		element.ElementType = fieldTypeConst
 		return element,nil
 	case Link:
 		element := LinkElement{}
-		element.ElementType = fieldType
+		element.ElementType = fieldTypeConst
 		return element,nil
 	case Date:
 		element := DateElement{}
-		element.ElementType = fieldType
+		element.ElementType = fieldTypeConst
 		return element,nil
 	case Category:
 		element := CategoryElement{}
-		element.ElementType = fieldType
+		element.ElementType = fieldTypeConst
 		return element,nil
 	default:
 		return nil,errors.New("No element found for property type" + fieldType)

@@ -31,7 +31,7 @@ func  load(csvFile *os.File) (*contentData,error){
 		for index, columnHeader := range headerRecord {
 			headersMap[index] = columnHeader
 		}
-		dataRows := make([]dataRow, len(headersMap))
+		dataRows := make([]dataRow, 0,len(headersMap))
 		for {
 			contentRecord, err := records.Read()
 			if err == io.EOF {
@@ -56,7 +56,7 @@ func  load(csvFile *os.File) (*contentData,error){
 
 type DataFeed interface {
 	HasNext() bool
-	Next() *dataRow
+	Next() DataRow
 	Headers() ([]string,error)
 	RecordCount() int
 }
@@ -99,11 +99,12 @@ func (dataFeed *dataFeed) HasNext() bool{
 	return dataFeed.rowIndex < dataFeed.rowSize
 }
 
-func (dataFeed *dataFeed) Next() *dataRow{
+func (dataFeed *dataFeed) Next() DataRow{
 	val,remainingRows :=  dataFeed.rowsStream.Pop()
 	dataFeed.rowsStream = remainingRows
 	dataFeed.rowIndex += 1
-	return val.Val().(*dataRow)
+	dataRow := val.Val().(dataRow)
+	return &dataRow
 }
 
 func (dataFeed *dataFeed) Headers() ([]string, error) {

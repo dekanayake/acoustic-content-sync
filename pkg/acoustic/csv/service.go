@@ -35,8 +35,8 @@ func (service *service) Create(contentType string, dataFeedPath string, configPa
 		return err
 	}
 	err = koazee.StreamOf(records).
-			ForEach(func(record AcousticDataRecord) error {
-				acousticContentDataOut := koazee.StreamOf(record.values).
+			ForEach(func(record api.AcousticDataRecord) error {
+				acousticContentDataOut := koazee.StreamOf(record.Values).
 					Reduce(func(acc map[string]interface{},columnData api.GenericData) (map[string]interface{},error){
 						if acc == nil {
 							acc = make(map[string]interface{})
@@ -45,7 +45,7 @@ func (service *service) Create(contentType string, dataFeedPath string, configPa
 						if err != nil {
 							return nil,err
 						}
-						element,err =  element.Enrich(columnData, api.TextConverter)
+						element,err =  element.Convert(columnData)
 						if err != nil {
 							return nil,err
 						}
@@ -58,15 +58,18 @@ func (service *service) Create(contentType string, dataFeedPath string, configPa
 			}
 			acousticContentData := acousticContentDataOut.Val().(map[string]interface{})
 			content := api.Content{
-				Name: "test",
+				Name: record.Name(),
 				TypeId: contentType,
 				Status: "ready",
 				LibraryID: service.acousticContentLib,
 				Elements: acousticContentData,
 			}
-			contentClient.Create(content)
+			_ , createErr := contentClient.Create(content)
+			if createErr != nil {
+				return createErr
+			}
 			return nil
-		}).Out().Err()
+		}).Do().Out().Err()
 	if err != nil {
 		return err
 	}

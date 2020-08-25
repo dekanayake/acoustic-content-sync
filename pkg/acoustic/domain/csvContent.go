@@ -9,8 +9,8 @@ type Content struct {
 }
 
 type Element struct {
-	Name string `csv:"ContentName"`
-	Type api.Type `json:"type"`
+	Name string        `csv:"ContentName"`
+	Type api.FieldType `json:"type"`
 }
 
 type StringElement struct {

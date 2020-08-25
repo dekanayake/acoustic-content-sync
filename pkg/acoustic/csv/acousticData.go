@@ -5,10 +5,6 @@ import (
 	"github.com/wesovilabs/koazee"
 )
 
-type AcousticDataRecord struct {
-	values []api.GenericData
-}
-
 
 func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow DataRow) (api.GenericData, error) {
 	data := api.GenericData{}
@@ -25,7 +21,8 @@ func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow
 	return data, nil
 }
 
-func  Transform(contentType string, dataFeedPath string, configPath string) (*[]AcousticDataRecord,error) {
+
+func  Transform(contentType string, dataFeedPath string, configPath string) ([]api.AcousticDataRecord,error) {
 	config, err := InitConfig(configPath)
 	if err != nil {
 		return nil,err
@@ -42,7 +39,7 @@ func  Transform(contentType string, dataFeedPath string, configPath string) (*[]
 	if err != nil {
 		return nil,err
 	}
-	acousticDataList := make([]AcousticDataRecord, 0, dataFeed.RecordCount())
+	acousticDataList := make([]api.AcousticDataRecord, 0, dataFeed.RecordCount())
 	for ok := true; ok; ok = dataFeed.HasNext() {
 		dataRow := dataFeed.Next()
 		acousticDataOut := koazee.StreamOf(columnHeaders).
@@ -55,7 +52,7 @@ func  Transform(contentType string, dataFeedPath string, configPath string) (*[]
 			return nil,err
 		}
 		acousticData := acousticDataOut.Val().([]api.GenericData)
-		acousticDataList = append(acousticDataList, AcousticDataRecord{values: acousticData})
+		acousticDataList = append(acousticDataList, api.AcousticDataRecord{Values: acousticData,NameFields: configTypeMapping.Name})
 	}
-	return &acousticDataList,nil
+	return acousticDataList,nil
 }
