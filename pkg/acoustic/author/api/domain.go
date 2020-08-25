@@ -1,5 +1,6 @@
 package api
 
+import "errors"
 
 type Type string
 
@@ -15,22 +16,26 @@ const (
 	Image Type = "image"
 )
 
+
 type Content struct {
 	Name string `json:"name"`
 	TypeId string `json:"typeId"`
 	Status string `json:"status"`
 	Elements  map[string] interface{} `json:"elements"`
+	LibraryID string `json:"libraryId"`
 }
 
-type Convertor func(element interface{}) (element,error)
+type Convertor func(data interface{}, element Element) (Element,error)
 
 type Element interface {
-	Convert(element interface{}, converter Convertor) (Element,error)
+	Enrich(element interface{}, converter Convertor) (Element,error)
 }
 
 type element struct {
 	ElementType Type `json:"elementType"`
 }
+
+
 
 type TextElement struct {
 	Value string `json:"value"`
@@ -95,12 +100,40 @@ type ContentError struct {
 	Locale interface{} `json:"locale"`
 }
 
-func (acousticElement *element) Convert(element interface{}, converter Convertor) (Element,error) {
-	convertedElement,error := converter(element)
-	if &convertedElement != nil {
-		convertedElement.ElementType = acousticElement.ElementType
+func (acousticElement element) Enrich(element interface{}, converter Convertor) (Element,error) {
+	convertedElement,err := converter(element,&acousticElement)
+	return convertedElement,err
+}
+
+func Build(fieldType string) (Element,error) {
+	switch fieldType {
+	case Text:
+		element := TextElement{}
+		element.ElementType = fieldType
+		return element,nil
+	case Number:
+		element := NumberElement{}
+		element.ElementType = fieldType
+		return element,nil
+	case Boolean:
+		element := BooleanElement{}
+		element.ElementType = fieldType
+		return element,nil
+	case Link:
+		element := LinkElement{}
+		element.ElementType = fieldType
+		return element,nil
+	case Date:
+		element := DateElement{}
+		element.ElementType = fieldType
+		return element,nil
+	case Category:
+		element := CategoryElement{}
+		element.ElementType = fieldType
+		return element,nil
+	default:
+		return nil,errors.New("No element found for property type" + fieldType)
 	}
-	return &convertedElement,error
 }
 
 

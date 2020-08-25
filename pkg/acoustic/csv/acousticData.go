@@ -1,19 +1,17 @@
 package csv
 
-import "github.com/wesovilabs/koazee"
+import (
+	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
+	"github.com/wesovilabs/koazee"
+)
 
 type AcousticDataRecord struct {
-	values []AcousticData
+	values []api.GenericData
 }
 
-type AcousticData struct {
-	Name string
-	Type string
-	Value string
-}
 
-func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow DataRow) (AcousticData, error) {
-	data := AcousticData{}
+func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow DataRow) (api.GenericData, error) {
+	data := api.GenericData{}
 	acousticFieldMapping, err := configTypeMapping.GetFieldMapping(columnHeader)
 	if err != nil {
 		return data, err
@@ -48,7 +46,7 @@ func  Transform(contentType string, dataFeedPath string, configPath string) (*[]
 	for ok := true; ok; ok = dataFeed.HasNext() {
 		dataRow := dataFeed.Next()
 		acousticDataOut := koazee.StreamOf(columnHeaders).
-			Map(func (columnHeader string) (AcousticData,error){
+			Map(func (columnHeader string) (api.GenericData,error){
 				return convert(columnHeader, configTypeMapping, dataRow)
 			}).Do().Out()
 
@@ -56,7 +54,7 @@ func  Transform(contentType string, dataFeedPath string, configPath string) (*[]
 		if err != nil {
 			return nil,err
 		}
-		acousticData := acousticDataOut.Val().([]AcousticData)
+		acousticData := acousticDataOut.Val().([]api.GenericData)
 		acousticDataList = append(acousticDataList, AcousticDataRecord{values: acousticData})
 	}
 	return &acousticDataList,nil
