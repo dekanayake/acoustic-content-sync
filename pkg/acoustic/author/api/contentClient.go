@@ -3,9 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"github.com/dekanayake/acoustic-content-sync/pkg/context"
 	"gopkg.in/resty.v1"
-	"net/http"
 )
 
 
@@ -14,13 +12,13 @@ type ContentClient interface {
 }
 
 type contentClient struct {
-	c resty.Client
+	c *resty.Client
 	acousticApiUrl string
 }
 
-func NewContentClient(acousticApiUrl string, authToken *http.Cookie) ContentClient {
+func NewContentClient(acousticApiUrl string) ContentClient {
 	return &contentClient{
-		c: *resty.New().SetCookie(authToken).SetDebug(context.IsDebugEnabled()),
+		c: Connect(),
 		acousticApiUrl: acousticApiUrl,
 	}
 }

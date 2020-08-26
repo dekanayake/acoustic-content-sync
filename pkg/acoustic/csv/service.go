@@ -3,7 +3,6 @@ package csv
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/wesovilabs/koazee"
-	"net/http"
 )
 
 type Service interface {
@@ -11,7 +10,6 @@ type Service interface {
 }
 
 type service struct {
-	authToken *http.Cookie
 	acousticAuthApiUrl string
 	acousticContentLib string
 }
@@ -19,9 +17,8 @@ type service struct {
 
 
 
-func NewService(authToken *http.Cookie, acousticAuthApiUrl string, acousticContentLib string) Service {
+func NewService(acousticAuthApiUrl string, acousticContentLib string) Service {
 	return &service{
-		authToken : authToken,
 		acousticAuthApiUrl :acousticAuthApiUrl,
 		acousticContentLib:acousticContentLib,
 	}
@@ -29,7 +26,7 @@ func NewService(authToken *http.Cookie, acousticAuthApiUrl string, acousticConte
 
 
 func (service *service) Create(contentType string, dataFeedPath string, configPath string) error {
-	contentClient := api.NewContentClient(service.acousticAuthApiUrl,service.authToken)
+	contentClient := api.NewContentClient(service.acousticAuthApiUrl)
 	records,err := Transform(contentType,dataFeedPath,configPath)
 	if err != nil {
 		return err
@@ -60,7 +57,7 @@ func (service *service) Create(contentType string, dataFeedPath string, configPa
 			content := api.Content{
 				Name: record.Name(),
 				TypeId: contentType,
-				Status: "ready",
+				Status: "draft",
 				LibraryID: service.acousticContentLib,
 				Elements: acousticContentData,
 			}

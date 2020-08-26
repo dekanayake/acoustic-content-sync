@@ -1,8 +1,11 @@
 package api
 
 import (
+	"errors"
+	"github.com/dekanayake/acoustic-content-sync/pkg/context"
 	"github.com/wesovilabs/koazee"
 	"strconv"
+	"strings"
 )
 
 type AcousticDataRecord struct {
@@ -55,6 +58,46 @@ func (element NumberElement) Convert (data interface{}) (Element,error) {
 
 func (element LinkElement) Convert (data interface{}) (Element,error) {
 	element.LinkURL = data.(GenericData).Value
+	return element,nil
+}
+
+
+func (element CategoryElement) Convert (data interface{}) (Element,error) {
+	catItems := strings.Split(data.(GenericData).Value,"/")
+	if len(catItems) == 1 {
+		return nil, errors.New("empty category :" + catItems[0])
+	}
+
+	categoryItems,err := NewCategoryClient(context.AcousticAPIUrl()).Categories(catItems[0])
+	if err != nil {
+		return nil, err
+	}
+	catNamePaths := make([]string,0,10)
+	for i := 1; i <= len(catItems); i++ {
+		catNamePathsSlice := catItems[0:i]
+		catNamePath := koazee.StreamOf(catNamePathsSlice).
+			Reduce(func(acc string, catNamePath string) string {
+				if acc == "" {
+					acc += catNamePath
+				} else {
+					acc += "/" + catNamePath
+				}
+				return acc
+		}).String()
+		catNamePaths = append(catNamePaths, catNamePath)
+	}
+
+	catIds := koazee.StreamOf(categoryItems).
+		Filter(func(categoryItem CategoryItem) bool{
+			fullNamePath := categoryItem.FullNamePath()
+			contains,_ :=  koazee.StreamOf(catNamePaths).Contains(fullNamePath)
+			return strings.Contains(fullNamePath,"/") && contains
+	}).
+		Map(func(categoryItem CategoryItem) string {
+			return categoryItem.Id
+	}).Out().Val().([]string)
+
+	element.CategoryIds = catIds
 	return element,nil
 }
 

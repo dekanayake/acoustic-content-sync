@@ -14,10 +14,11 @@ func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow
 	}
 	data.Name = acousticFieldMapping.AcousticProperty
 	data.Type = acousticFieldMapping.PropertyType
-	data.Value, err = dataRow.Get(columnHeader)
+	value, err := dataRow.Get(columnHeader)
 	if err != nil {
 		return data, err
 	}
+	data.Value = acousticFieldMapping.Value(value)
 	return data, nil
 }
 

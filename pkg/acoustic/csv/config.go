@@ -2,6 +2,7 @@ package csv
 
 import (
 	"errors"
+	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
@@ -17,6 +18,15 @@ type ContentFieldMapping struct {
 	CsvProperty string `yaml:"csvProperty"`
 	AcousticProperty string `yaml:"acousticProperty"`
 	PropertyType  string `yaml:"propertyType"`
+	CategoryName string `yaml:"categoryName"`
+}
+
+func (contentFieldMapping ContentFieldMapping) Value(value string)  string {
+	if api.FieldType(contentFieldMapping.PropertyType) == api.Category {
+		return contentFieldMapping.CategoryName + "/" + value
+	} else {
+		return value
+	}
 }
 
 type ContentTypeMapping struct {

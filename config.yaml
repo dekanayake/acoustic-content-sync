@@ -11,4 +11,8 @@ contentType:
       - csvProperty: productUrl
         acousticProperty: productUrl
         propertyType: link
+      - csvProperty: productCategory
+        acousticProperty: productCategory
+        propertyType: category
+        categoryName: "TRS Product Category"
 
