@@ -2,6 +2,7 @@ package csv
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
+	context "github.com/dekanayake/acoustic-content-sync/pkg/context"
 	"github.com/wesovilabs/koazee"
 )
 
@@ -57,7 +58,7 @@ func (service *service) Create(contentType string, dataFeedPath string, configPa
 			content := api.Content{
 				Name: record.Name(),
 				TypeId: contentType,
-				Status: "draft",
+				Status: context.ContentStatus(),
 				LibraryID: service.acousticContentLib,
 				Elements: acousticContentData,
 			}

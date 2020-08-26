@@ -26,14 +26,14 @@ func NewContentClient(acousticApiUrl string) ContentClient {
 func (contentClient *contentClient) Create (content Content) (*ContentCreateResponse,error) {
 	req := contentClient.c.NewRequest().SetBody(content).
 		SetResult(&ContentCreateResponse{}).
-		SetError(&ContentCreateErrorResponse{})
+		SetError(&ContentAuthoringErrorResponse{})
 
 	if resp, err := req.Post(contentClient.acousticApiUrl + "/authoring/v1/content") ; err != nil {
 		return nil,err
 	}   else if resp.IsSuccess() {
 		return resp.Result().(*ContentCreateResponse), nil
 	} else if resp.IsError() && resp.StatusCode() == 400 {
-		error := resp.Error().(*ContentCreateErrorResponse)
+		error := resp.Error().(*ContentAuthoringErrorResponse)
 		errorString,_ := json.MarshalIndent(error, "", "\t")
 		return nil, errors.New("error in creating content : " + resp.Status() + "  " + string(errorString))
 	} else {

@@ -19,6 +19,11 @@ func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow
 		return data, err
 	}
 	data.Value = acousticFieldMapping.Value(value)
+	context,err := acousticFieldMapping.Context(dataRow,configTypeMapping)
+	if err != nil {
+		return api.GenericData{},err
+	}
+	data.Context = context
 	return data, nil
 }
 
@@ -53,7 +58,7 @@ func  Transform(contentType string, dataFeedPath string, configPath string) ([]a
 			return nil,err
 		}
 		acousticData := acousticDataOut.Val().([]api.GenericData)
-		acousticDataList = append(acousticDataList, api.AcousticDataRecord{Values: acousticData,NameFields: configTypeMapping.Name})
+		acousticDataList = append(acousticDataList, api.AcousticDataRecord{Values: acousticData,NameFields: configTypeMapping.Name, Tags: configTypeMapping.Tags})
 	}
 	return acousticDataList,nil
 }

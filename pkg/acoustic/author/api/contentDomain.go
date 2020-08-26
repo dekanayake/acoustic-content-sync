@@ -17,6 +17,10 @@ const (
 )
 
 
+type Tags struct {
+	Values []string `json:"values"`
+}
+
 type Content struct {
 	Name string `json:"name"`
 	TypeId string `json:"typeId"`
@@ -67,6 +71,16 @@ type CategoryElement struct {
 	element
 }
 
+type ImageElement struct {
+	Mode string `json:"mode"`
+	Asset Asset `json:"asset"`
+	element
+}
+
+type Asset struct {
+	ID string `json:"id"`
+}
+
 type ContentCreateResponse struct {
 	Id string `json:"id"`
 	Rev string `json:"rev"`
@@ -75,16 +89,16 @@ type ContentCreateResponse struct {
 	Type string `json:"type"`
 }
 
-type ContentCreateErrorResponse struct {
-	RequestId string `json:"requestId"`
-	Service string `json:"service"`
-	RequestMethod string `json:"requestMethod"`
-	RequestUri string `json:"requestUri"`
-	Type string `json:"type"`
-	Errors []ContentError `json:"errors"`
+type ContentAuthoringErrorResponse struct {
+	RequestId string               `json:"requestId"`
+	Service string                 `json:"service"`
+	RequestMethod string           `json:"requestMethod"`
+	RequestUri string              `json:"requestUri"`
+	Type string                    `json:"type"`
+	Errors []ContentAuthoringError `json:"errors"`
 }
 
-type ContentError struct {
+type ContentAuthoringError struct {
 	Code int64 `json:"code"`
 	Key string `json:"key"`
 	Message string `json:"message"`
@@ -126,6 +140,10 @@ func Build(fieldType string) (Element,error) {
 		return element,nil
 	case Category:
 		element := CategoryElement{}
+		element.ElementType = fieldTypeConst
+		return element,nil
+	case Image:
+		element := ImageElement{}
 		element.ElementType = fieldTypeConst
 		return element,nil
 	default:

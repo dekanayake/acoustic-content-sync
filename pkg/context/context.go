@@ -21,3 +21,7 @@ func AcousticAuthUserName () string {
 func AcousticAuthPassword () string {
 	return os.Getenv("AcousticAuthPassword")
 }
+
+func ContentStatus() string {
+	return os.Getenv("ContentStatus")
+}

@@ -1,6 +1,7 @@
 contentType:
   - type: "f5fe4c5c-67db-465a-aba6-75618cdcbf30"
     name: [productCode,productTitle]
+    tags: [moodboard,reece]
     fieldMapping:
       - csvProperty: productCode
         acousticProperty: productCode
@@ -15,4 +16,14 @@ contentType:
         acousticProperty: productCategory
         propertyType: category
         categoryName: "TRS Product Category"
+      - csvProperty: productImage
+        acousticProperty: productImage
+        propertyType: image
+        assetName:
+        - refCSVProperty: productCode
+          propertyName: productCode
+        profiles: ["ae34cc92-8144-4d78-9660-c7d20abc0817"]
+        assetLocation: "reece_images"
+        acousticAssetBasePath: "/dxdam/moodboard/reece"
+
 

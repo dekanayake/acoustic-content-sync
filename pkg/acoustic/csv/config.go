@@ -19,7 +19,19 @@ type ContentFieldMapping struct {
 	AcousticProperty string `yaml:"acousticProperty"`
 	PropertyType  string `yaml:"propertyType"`
 	CategoryName string `yaml:"categoryName"`
+	AssetName []RefPropertyMapping `yaml:"assetName"`
+	Profiles []string `yaml:"profiles"`
+	AcousticAssetBasePath string `yaml:"acousticAssetBasePath"`
+	AssetLocation string `yaml:"assetLocation"`
 }
+
+type RefPropertyMapping struct {
+	RefCSVProperty string `yaml:"refCSVProperty"`
+	PropertyName string `yaml:"propertyName"`
+}
+
+
+
 
 func (contentFieldMapping ContentFieldMapping) Value(value string)  string {
 	if api.FieldType(contentFieldMapping.PropertyType) == api.Category {
@@ -29,10 +41,62 @@ func (contentFieldMapping ContentFieldMapping) Value(value string)  string {
 	}
 }
 
+func (refPropertyMapping RefPropertyMapping) Context(dataRow DataRow) (map[string]string,error) {
+		val,err := dataRow.Get(refPropertyMapping.RefCSVProperty)
+		if err != nil {
+			return nil,err
+		}
+		return map[string]string{
+			refPropertyMapping.PropertyName:val,
+		},nil
+}
+
+func assetName(refPropertyMappings []RefPropertyMapping,dataRow DataRow) (map[string]string,error) {
+	 stream := koazee.StreamOf(refPropertyMappings).
+	 	Reduce(func(acc map[string]string,refPropertyMapping RefPropertyMapping) (map[string]string,error){
+	 		if acc == nil {
+	 			acc = make(map[string]string,0)
+			}
+		 	val,err := refPropertyMapping.Context(dataRow)
+		 	if err != nil {
+		 		return nil,err
+			}
+			for k, v := range val {
+				 acc[k] = v
+			}
+			return acc,nil
+	 })
+
+	 err := stream.Err()
+	 if err != nil {
+	 	return nil,err
+	 }
+	 return stream.Val().(map[string]string),nil
+}
+
+func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow,configTypeMapping *ContentTypeMapping)  (api.Context,error) {
+	if api.FieldType(contentFieldMapping.PropertyType) == api.Image {
+		assetName,err := assetName(contentFieldMapping.AssetName,dataRow)
+		if err != nil {
+			return api.Context{},err
+		}
+		return api.Context{Data:map[api.ContextKey]interface{} {
+			api.AssetName:assetName,
+			api.Profiles:contentFieldMapping.Profiles,
+			api.AcousticAssetBasePath:contentFieldMapping.AcousticAssetBasePath,
+			api.AssetLocation:contentFieldMapping.AssetLocation,
+			api.TagList:configTypeMapping.Tags,
+		}},nil
+	} else {
+		return api.Context{},nil
+	}
+}
+
 type ContentTypeMapping struct {
 	Type string                        `yaml:"type"`
 	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
 	Name []string `yaml:"name"`
+	Tags []string `yaml:"tags"`
 }
 
 type ContentTypesMapping struct {

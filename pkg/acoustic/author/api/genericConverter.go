@@ -1,22 +1,49 @@
 package api
 
 import (
+	"bufio"
 	"errors"
 	"github.com/dekanayake/acoustic-content-sync/pkg/context"
 	"github.com/wesovilabs/koazee"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
+type ContextKey string
+
 type AcousticDataRecord struct {
 	NameFields []string
 	Values []GenericData
+	Tags []string
 }
 
 type GenericData struct {
 	Name string
 	Type string
 	Value string
+	Context Context
+}
+
+type Context struct {
+	Data map[ContextKey]interface{}
+}
+
+const (
+	AssetName ContextKey = "AssetName"
+	Profiles ContextKey = "Profiles"
+	AcousticAssetBasePath ContextKey = "AcousticAssetBasePath"
+	AssetLocation ContextKey = "AssetLocation"
+	TagList ContextKey = "Tags"
+)
+
+func (context Context) getValue(key ContextKey) (interface{},error) {
+	if val,ok := context.Data[key] ; ok {
+		return val,nil
+	} else {
+		return nil, errors.New("no context value found for key :" + string(key))
+	}
 }
 
 func (acousticDataRecord AcousticDataRecord) Name() string {
@@ -99,6 +126,63 @@ func (element CategoryElement) Convert (data interface{}) (Element,error) {
 
 	element.CategoryIds = catIds
 	return element,nil
+}
+
+func getAssetName(values map[string]string) string {
+	assetName := ""
+	for _, v := range values {
+		if assetName != "" {
+			assetName += "_"
+		}
+		assetName += v
+	}
+	return assetName
+}
+
+func (element ImageElement) Convert (data interface{}) (Element,error) {
+	 imgData := data.(GenericData)
+	 imgDataContext := imgData.Context
+	 assetLocation, err := imgDataContext.getValue(AssetLocation)
+	 if err != nil {
+	 	return nil,err
+	 }
+	 assetFullPath := assetLocation.(string) + "/" + imgData.Value
+	 assetExtension := filepath.Ext(assetFullPath)
+	 assetFile, err := os.Open(assetFullPath)
+	 defer assetFile.Close()
+	 if err != nil {
+		 return nil,err
+	 }
+	 assetName, err := imgDataContext.getValue(AssetName)
+	 if err != nil {
+		return nil,err
+	 }
+	 assetNameValue := getAssetName(assetName.(map[string]string))  + assetExtension
+	 tags, err := imgDataContext.getValue(TagList)
+	 if err != nil {
+		 return nil,err
+	 }
+	 tagsValue := tags.([]string)
+	 acousticAssetBasePath, err := imgDataContext.getValue(AcousticAssetBasePath)
+	 if err != nil {
+		return nil,err
+	 }
+	 acousticAssetPath := acousticAssetBasePath.(string) + "/" + assetNameValue
+	 profiles, err := imgDataContext.getValue(Profiles)
+	 if err != nil {
+		return nil,err
+	 }
+	 profileValues := profiles.([]string)
+	 resp, err := NewAssetClient(context.AcousticAPIUrl()).Create(bufio.NewReader(assetFile),assetNameValue,tagsValue,
+		 acousticAssetPath,context.ContentStatus(),profileValues)
+	 if err != nil {
+	 	return nil,err
+	 }
+	 element.Asset = Asset{
+	 	ID:resp.Id,
+	 }
+	 element.Mode = "shared"
+	 return element,nil
 }
 
 

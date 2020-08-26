@@ -45,6 +45,7 @@ type categoryClient struct {
 	acousticApiUrl string
 }
 
+
 func NewCategoryClient(acousticApiUrl string) CategoryClient {
 	return &categoryClient{
 		c: Connect(),
@@ -53,8 +54,6 @@ func NewCategoryClient(acousticApiUrl string) CategoryClient {
 }
 
 func (categoryClient *categoryClient) 	Categories(categoryName string) ([]CategoryItem,error) {
-
-
 
 	categoryItems := make([]CategoryItem,0,10)
 	offSet := 0
