@@ -2,7 +2,7 @@ package csv
 
 import (
 	"encoding/csv"
-	"errors"
+	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/wesovilabs/koazee"
 	"github.com/wesovilabs/koazee/stream"
 	"io"
@@ -17,90 +17,90 @@ type dataRow struct {
 	columns map[string]string
 }
 
-func  load(csvFile *os.File) (*contentData,error){
+func load(csvFile *os.File) (*contentData, error) {
 	records := csv.NewReader(csvFile)
 	headerRecord, err := records.Read()
 	if err == io.EOF {
-		return nil,errors.New("CSV file is empty. ")
+		return nil, errors.ErrorMessageWithStack("CSV file is empty. ")
 	}
 	if err != nil {
-		return nil,err
+		return nil, errors.ErrorWithStack(err)
 	}
 	if headerRecord != nil {
 		headersMap := make(map[int]string)
 		for index, columnHeader := range headerRecord {
 			headersMap[index] = columnHeader
 		}
-		dataRows := make([]dataRow, 0,len(headersMap))
+		dataRows := make([]dataRow, 0, len(headersMap))
 		for {
 			contentRecord, err := records.Read()
 			if err == io.EOF {
 				break
 			}
 			if err != nil {
-				return nil,err
+				return nil, errors.ErrorWithStack(err)
 			}
 			row := make(map[string]string)
 			for index, columnValue := range contentRecord {
 				row[headersMap[index]] = columnValue
 			}
-			dataRow := dataRow{columns:row}
+			dataRow := dataRow{columns: row}
 			dataRows = append(dataRows, dataRow)
 		}
-		contentData := &contentData{rows : dataRows}
-		return contentData,nil
+		contentData := &contentData{rows: dataRows}
+		return contentData, nil
 	} else {
-		return nil, errors.New("No error nor record found!")
+		return nil, errors.ErrorMessageWithStack("No error nor record found!")
 	}
 }
 
 type DataFeed interface {
 	HasNext() bool
 	Next() DataRow
-	Headers() ([]string,error)
+	Headers() ([]string, error)
 	RecordCount() int
 }
 
 type DataRow interface {
-	Get(columnName string) (string,error)
+	Get(columnName string) (string, error)
 }
 
 type dataFeed struct {
 	rowIndex   int
 	rowSize    int
-	rows []dataRow
+	rows       []dataRow
 	rowsStream stream.Stream
 }
 
-func  LoadCSV(csvFilePath string) (DataFeed,error) {
+func LoadCSV(csvFilePath string) (DataFeed, error) {
 	csvFile, err := os.Open(csvFilePath)
 	defer csvFile.Close()
 	if err != nil {
-		return nil,err
+		return nil, errors.ErrorWithStack(err)
 	} else {
-		if contentData,err := load(csvFile) ; err != nil {
-			return nil,err
+		if contentData, err := load(csvFile); err != nil {
+			return nil, err
 		} else {
 			return &dataFeed{
-						rowIndex:   0,
-						rowSize:    len(contentData.rows),
-						rowsStream: koazee.StreamOf(contentData.rows),
-						rows : contentData.rows,
-				},nil
+				rowIndex:   0,
+				rowSize:    len(contentData.rows),
+				rowsStream: koazee.StreamOf(contentData.rows),
+				rows:       contentData.rows,
+			}, nil
 		}
 	}
 }
 
-func (dataFeed *dataFeed) RecordCount() int{
+func (dataFeed *dataFeed) RecordCount() int {
 	return dataFeed.rowSize
 }
 
-func (dataFeed *dataFeed) HasNext() bool{
+func (dataFeed *dataFeed) HasNext() bool {
 	return dataFeed.rowIndex < dataFeed.rowSize
 }
 
-func (dataFeed *dataFeed) Next() DataRow{
-	val,remainingRows :=  dataFeed.rowsStream.Pop()
+func (dataFeed *dataFeed) Next() DataRow {
+	val, remainingRows := dataFeed.rowsStream.Pop()
 	dataFeed.rowsStream = remainingRows
 	dataFeed.rowIndex += 1
 	dataRow := val.Val().(dataRow)
@@ -115,16 +115,16 @@ func (dataFeed *dataFeed) Headers() ([]string, error) {
 		for k := range columns {
 			keys = append(keys, k)
 		}
-		return keys,nil
+		return keys, nil
 	} else {
-		return nil, errors.New("No contents in datafeed")
+		return nil, errors.ErrorMessageWithStack("No contents in datafeed")
 	}
 }
 
-func (dataRow *dataRow) Get(columnName string) (string,error) {
-		if _, ok := dataRow.columns[columnName]; !ok {
-			return "",errors.New("No value found for column name :" + columnName)
-		} else {
-			return dataRow.columns[columnName],nil
-		}
+func (dataRow *dataRow) Get(columnName string) (string, error) {
+	if _, ok := dataRow.columns[columnName]; !ok {
+		return "", errors.ErrorMessageWithStack("No value found for column name :" + columnName)
+	} else {
+		return dataRow.columns[columnName], nil
+	}
 }
