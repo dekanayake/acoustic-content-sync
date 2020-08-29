@@ -2,28 +2,28 @@ package csv
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
-	context "github.com/dekanayake/acoustic-content-sync/pkg/env"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/wesovilabs/koazee"
 )
 
-type Service interface {
+type ContentService interface {
 	Create(contentType string, dataFeedPath string, configPath string) error
 }
 
-type service struct {
+type contentService struct {
 	acousticAuthApiUrl string
 	acousticContentLib string
 }
 
-func NewService(acousticAuthApiUrl string, acousticContentLib string) Service {
-	return &service{
+func NewContentService(acousticAuthApiUrl string, acousticContentLib string) ContentService {
+	return &contentService{
 		acousticAuthApiUrl: acousticAuthApiUrl,
 		acousticContentLib: acousticContentLib,
 	}
 }
 
-func (service *service) Create(contentType string, dataFeedPath string, configPath string) error {
+func (service *contentService) Create(contentType string, dataFeedPath string, configPath string) error {
 	contentClient := api.NewContentClient(service.acousticAuthApiUrl)
 	records, err := Transform(contentType, dataFeedPath, configPath)
 	if err != nil {
@@ -55,7 +55,7 @@ func (service *service) Create(contentType string, dataFeedPath string, configPa
 			content := api.Content{
 				Name:      record.Name(),
 				TypeId:    contentType,
-				Status:    context.ContentStatus(),
+				Status:    env.ContentStatus(),
 				LibraryID: service.acousticContentLib,
 				Elements:  acousticContentData,
 			}

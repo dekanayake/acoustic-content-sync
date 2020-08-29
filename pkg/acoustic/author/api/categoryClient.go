@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/wesovilabs/koazee"
 	"gopkg.in/resty.v1"
@@ -19,9 +20,13 @@ type CategoryItem struct {
 	NamePath []string `json:"namePath"`
 }
 
+type CategoryCreateRequest struct {
+	Name   string `json:"name"`
+	Parent string `json:"parent"`
+}
+
 func (categoryItem *CategoryItem) IsMatchingCategory(categoryName string) bool {
-	return categoryName == categoryItem.NamePath[0] &&
-		len(categoryItem.NamePath) > 1
+	return categoryName == categoryItem.NamePath[0]
 }
 
 func (categoryItem *CategoryItem) FullNamePath() string {
@@ -38,6 +43,7 @@ func (categoryItem *CategoryItem) FullNamePath() string {
 
 type CategoryClient interface {
 	Categories(categoryName string) ([]CategoryItem, error)
+	CreateCategory(parentCategoryID string, categoryName string) (CategoryItem, error)
 }
 
 type categoryClient struct {
@@ -49,6 +55,23 @@ func NewCategoryClient(acousticApiUrl string) CategoryClient {
 	return &categoryClient{
 		c:              Connect(),
 		acousticApiUrl: acousticApiUrl,
+	}
+}
+
+func (categoryClient categoryClient) CreateCategory(parentCategoryID string, categoryName string) (CategoryItem, error) {
+	req := categoryClient.c.NewRequest().
+		SetBody(CategoryCreateRequest{Name: categoryName, Parent: parentCategoryID}).
+		SetResult(&CategoryItem{})
+	if resp, err := req.Post(categoryClient.acousticApiUrl + "/authoring/v1/categories"); err != nil {
+		return CategoryItem{}, errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return *resp.Result().(*CategoryItem), nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error()
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return CategoryItem{}, errors.ErrorMessageWithStack("error in creating content : " + resp.Status() + "  " + string(errorString))
+	} else {
+		return CategoryItem{}, errors.ErrorMessageWithStack("error in creating content : " + resp.Status())
 	}
 }
 

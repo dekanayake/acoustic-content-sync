@@ -32,7 +32,7 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
-	configTypeMapping, err := config.Get(contentType)
+	configTypeMapping, err := config.GetContentType(contentType)
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}

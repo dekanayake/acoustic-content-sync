@@ -13,6 +13,23 @@ type ContentType interface {
 	GetFieldMapping(csvField string) (ContentFieldMapping, error)
 }
 
+type ContentTypesMapping struct {
+	ContentType     []ContentTypeMapping `yaml:"contentType"`
+	CategoryMapping []CategoryMapping    `yaml:"category"`
+}
+
+type ContentTypeMapping struct {
+	Type         string                `yaml:"type"`
+	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
+	Name         []string              `yaml:"name"`
+	Tags         []string              `yaml:"tags"`
+}
+
+type CategoryMapping struct {
+	Parent string `yaml:"parent"`
+	Column string `yaml:"column"`
+}
+
 type ContentFieldMapping struct {
 	CsvProperty           string               `yaml:"csvProperty"`
 	AcousticProperty      string               `yaml:"acousticProperty"`
@@ -88,17 +105,6 @@ func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTy
 	}
 }
 
-type ContentTypeMapping struct {
-	Type         string                `yaml:"type"`
-	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
-	Name         []string              `yaml:"name"`
-	Tags         []string              `yaml:"tags"`
-}
-
-type ContentTypesMapping struct {
-	ContentType []ContentTypeMapping `yaml:"contentType"`
-}
-
 func (csvContentTypesMapping *ContentTypesMapping) GetContentTypeMapping(contentType string) (*ContentTypeMapping, error) {
 	contentTypeMapping := koazee.StreamOf(csvContentTypesMapping.ContentType).
 		Filter(func(contentTypeMapping ContentTypeMapping) bool {
@@ -128,7 +134,8 @@ func (csvContentTypeMapping *ContentTypeMapping) GetFieldMapping(csvField string
 }
 
 type Config interface {
-	Get(contentModel string) (*ContentTypeMapping, error)
+	GetContentType(contentModel string) (*ContentTypeMapping, error)
+	GetCategory(categoryName string) (*CategoryMapping, error)
 }
 
 type config struct {
@@ -151,7 +158,19 @@ func InitConfig(configPath string) (Config, error) {
 	}
 }
 
-func (config *config) Get(contentType string) (*ContentTypeMapping, error) {
+func (config config) GetCategory(categoryName string) (*CategoryMapping, error) {
+	categoryMapping := koazee.StreamOf(config.mappings.CategoryMapping).
+		Filter(func(mapping CategoryMapping) bool {
+			return mapping.Parent == categoryName
+		}).
+		First().Val().(CategoryMapping)
+	if &categoryMapping == nil {
+		return nil, errors.ErrorMessageWithStack("No category mapping found for provided category :" + categoryName)
+	}
+	return &categoryMapping, nil
+}
+
+func (config *config) GetContentType(contentType string) (*ContentTypeMapping, error) {
 	if config.mappings != nil {
 		if contentTypeMapping, err := config.mappings.GetContentTypeMapping(contentType); err != nil {
 			return nil, errors.ErrorWithStack(err)

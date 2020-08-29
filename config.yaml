@@ -25,5 +25,8 @@ contentType:
         profiles: ["ae34cc92-8144-4d78-9660-c7d20abc0817"]
         assetLocation: "reece_images"
         acousticAssetBasePath: "/dxdam/moodboard/reece"
+category:
+  - parent: "TRS Brands"
+    column: "Brand"
 
 

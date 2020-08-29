@@ -96,6 +96,10 @@ func (element CategoryElement) Convert(data interface{}) (Element, error) {
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
+	categoryItems = koazee.StreamOf(categoryItems).
+		Filter(func(categoryItem CategoryItem) bool {
+			return len(categoryItem.NamePath) > 0
+		}).Out().Val().([]CategoryItem)
 	catNamePaths := make([]string, 0, 10)
 	for i := 1; i <= len(catItems); i++ {
 		catNamePathsSlice := catItems[0:i]

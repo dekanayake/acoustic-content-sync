@@ -19,9 +19,15 @@ func init() {
 func main() {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.New().WithField("", "")}
 
-	service := csv.NewService(os.Getenv("AcousticAPIURL"), "0e958689-13ce-4eda-9c68-bb4dcc09dd73")
-	err := service.Create("f5fe4c5c-67db-465a-aba6-75618cdcbf30", "data.csv", "config.yaml")
+	service := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
+	err := service.Create("TRS Brands", "output.csv", "config.yaml")
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
+
+	//service := csv.NewContentService(os.Getenv("AcousticAPIURL"), "0e958689-13ce-4eda-9c68-bb4dcc09dd73")
+	//err := service.Create("f5fe4c5c-67db-465a-aba6-75618cdcbf30", "data.csv", "config.yaml")
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
 }
