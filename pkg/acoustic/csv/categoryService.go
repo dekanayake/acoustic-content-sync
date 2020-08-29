@@ -57,7 +57,7 @@ func (category category) parentCategory() string {
 
 }
 
-func createCategory(newCategoryPath string, rootCategory string, existingCategories map[string]string, categoryClient api.CategoryClient) (api.CategoryItem, error) {
+func createCategory(newCategoryPath string, rootCategory string, existingCategories map[string]string, categoryClient api.CategoryClient) (map[string]string, error) {
 	newCategory := &category{
 		fullCategoryPath: newCategoryPath,
 		rootCategory:     rootCategory,
@@ -65,23 +65,28 @@ func createCategory(newCategoryPath string, rootCategory string, existingCategor
 	parentCategoryPath := newCategory.parentCategory()
 	parentCategoryID := existingCategories[parentCategoryPath]
 	if parentCategoryID == "" {
-		parentCategory, err := createCategory(parentCategoryPath, rootCategory, existingCategories, categoryClient)
+		createdCategories, err := createCategory(parentCategoryPath, rootCategory, existingCategories, categoryClient)
 		if err != nil {
-			return api.CategoryItem{}, errors.ErrorWithStack(err)
+			return nil, errors.ErrorWithStack(err)
 		}
-		newCategory, err := categoryClient.CreateCategory(parentCategory.Id, newCategory.childCategory())
+		parentCategoryID := createdCategories[parentCategoryPath]
+		if parentCategoryID == "" {
+			return nil, errors.ErrorMessageWithStack("No created parent category id found : " + parentCategoryPath)
+		}
+		newCategory, err := categoryClient.CreateCategory(parentCategoryID, newCategory.childCategory())
 		if err != nil {
-			return api.CategoryItem{}, errors.ErrorWithStack(err)
+			return nil, errors.ErrorWithStack(err)
 		}
-		existingCategories[newCategory.FullNamePath()] = newCategory.Id
-		return newCategory, nil
+		createdCategories[newCategory.FullNamePath()] = newCategory.Id
+		return createdCategories, nil
 	} else {
 		newCategory, err := categoryClient.CreateCategory(parentCategoryID, newCategory.childCategory())
 		if err != nil {
-			return api.CategoryItem{}, errors.ErrorWithStack(err)
+			return nil, errors.ErrorWithStack(err)
 		}
-		existingCategories[newCategory.FullNamePath()] = newCategory.Id
-		return newCategory, nil
+		createdCategories := make(map[string]string, 0)
+		createdCategories[newCategory.FullNamePath()] = newCategory.Id
+		return createdCategories, nil
 	}
 }
 
@@ -131,9 +136,12 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 
 	err = koazee.StreamOf(newCategories).
 		ForEach(func(newCategoryPath string) error {
-			_, err := createCategory(newCategoryPath, categoryName, existingCategories, c.categoryClient)
+			createdCategories, err := createCategory(newCategoryPath, categoryName, existingCategories, c.categoryClient)
 			if err != nil {
 				return errors.ErrorWithStack(err)
+			}
+			for k, v := range createdCategories {
+				existingCategories[k] = v
 			}
 			return nil
 		}).Do().Out().Err().UserError()
