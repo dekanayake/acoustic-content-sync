@@ -26,6 +26,7 @@ type Content struct {
 	Status    string                 `json:"status"`
 	Elements  map[string]interface{} `json:"elements"`
 	LibraryID string                 `json:"libraryId"`
+	Tags      []string               `json:"tags"`
 }
 
 type Element interface {

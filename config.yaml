@@ -2,7 +2,7 @@ contentType:
   - type: "f5fe4c5c-67db-465a-aba6-75618cdcbf30"
     csvRecordKey : productCode
     name: [productCode,productTitle]
-    tags: [moodboard,reece]
+    tags: [moodboard,reece,test]
     fieldMapping:
       - csvProperty: productCode
         acousticProperty: productCode

@@ -130,6 +130,7 @@ func (service *contentService) Create(contentType string, dataFeedPath string, c
 				Status:    env.ContentStatus(),
 				LibraryID: service.acousticContentLib,
 				Elements:  acousticContentData,
+				Tags:      record.Tags,
 			}
 			response, createErr := contentClient.Create(content)
 			if createErr != nil {
