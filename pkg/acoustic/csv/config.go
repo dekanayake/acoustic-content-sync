@@ -23,6 +23,7 @@ type ContentTypeMapping struct {
 	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
 	Name         []string              `yaml:"name"`
 	Tags         []string              `yaml:"tags"`
+	CsvRecordKey string                `yaml:"csvRecordKey"`
 }
 
 type CategoryMapping struct {

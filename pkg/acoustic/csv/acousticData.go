@@ -57,7 +57,12 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 			return nil, errors.ErrorWithStack(err)
 		}
 		acousticData := acousticDataOut.Val().([]api.GenericData)
-		acousticDataList = append(acousticDataList, api.AcousticDataRecord{Values: acousticData, NameFields: configTypeMapping.Name, Tags: configTypeMapping.Tags})
+		acousticDataList = append(acousticDataList, api.AcousticDataRecord{
+			Values:       acousticData,
+			NameFields:   configTypeMapping.Name,
+			Tags:         configTypeMapping.Tags,
+			CSVRecordKey: configTypeMapping.CsvRecordKey,
+		})
 	}
 	return acousticDataList, nil
 }

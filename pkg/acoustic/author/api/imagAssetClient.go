@@ -67,6 +67,7 @@ func (assetClient *assetClient) Create(
 		SetFormData(map[string]string{
 			"data": string(resourceCreateReqJson),
 		}).SetResult(&AssetCreateResponse{}).
+		SetError(&ContentAuthoringErrorResponse{}).
 		Post(assetClient.acousticApiUrl + "/authoring/v1/assets")
 
 	if err != nil {

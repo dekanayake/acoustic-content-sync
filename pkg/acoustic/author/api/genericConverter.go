@@ -14,9 +14,10 @@ import (
 type ContextKey string
 
 type AcousticDataRecord struct {
-	NameFields []string
-	Values     []GenericData
-	Tags       []string
+	CSVRecordKey string
+	NameFields   []string
+	Values       []GenericData
+	Tags         []string
 }
 
 type GenericData struct {
@@ -65,6 +66,15 @@ func (acousticDataRecord AcousticDataRecord) Name() string {
 			}
 			return acc
 		}).String()
+}
+
+func (acousticDataRecord AcousticDataRecord) CSVRecordKeyValue() string {
+	return koazee.StreamOf(acousticDataRecord.Values).
+		Filter(func(columnValue GenericData) bool {
+			return columnValue.Name == acousticDataRecord.CSVRecordKey
+		}).Map(func(columnValue GenericData) string {
+		return columnValue.Value
+	}).First().String()
 }
 
 func (element TextElement) Convert(data interface{}) (Element, error) {

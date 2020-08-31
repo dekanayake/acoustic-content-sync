@@ -1,22 +1,31 @@
 contentType:
   - type: "f5fe4c5c-67db-465a-aba6-75618cdcbf30"
+    csvRecordKey : productCode
     name: [productCode,productTitle]
     tags: [moodboard,reece]
     fieldMapping:
       - csvProperty: productCode
         acousticProperty: productCode
         propertyType: number
-      - csvProperty: productTitle
+      - csvProperty: Description
         acousticProperty: productTitle
         propertyType: text
-      - csvProperty: productUrl
+      - csvProperty: Website Link
         acousticProperty: productUrl
         propertyType: link
-      - csvProperty: productCategory
+      - csvProperty: Category
         acousticProperty: productCategory
         propertyType: category
         categoryName: "TRS Product Category"
-      - csvProperty: productImage
+      - csvProperty: Brand
+        acousticProperty: productBrand
+        propertyType: category
+        categoryName: "TRS Brands"
+      - csvProperty: colour
+        acousticProperty: productColor
+        propertyType: category
+        categoryName: "TRS Product Color"
+      - csvProperty: Image Name
         acousticProperty: productImage
         propertyType: image
         assetName:

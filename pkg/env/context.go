@@ -36,3 +36,11 @@ func AcousticAuthPassword() string {
 func ContentStatus() string {
 	return GetOrPanic("ContentStatus")
 }
+
+func LogErrorsToFile() bool {
+	return GetOrPanic("WriteErrorsToFile") == "true"
+}
+
+func ErrorLogFileLocation() string {
+	return GetOrPanic("ErrorLogFileLocation")
+}
