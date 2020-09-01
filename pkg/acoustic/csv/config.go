@@ -79,26 +79,17 @@ func (refPropertyMapping RefPropertyMapping) Context(dataRow DataRow) (map[strin
 }
 
 func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[string]string, error) {
-	stream := koazee.StreamOf(refPropertyMappings).
-		Reduce(func(acc map[string]string, refPropertyMapping RefPropertyMapping) (map[string]string, error) {
-			if acc == nil {
-				acc = make(map[string]string, 0)
-			}
-			val, err := refPropertyMapping.Context(dataRow)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
-			}
-			for k, v := range val {
-				acc[k] = v
-			}
-			return acc, nil
-		})
-
-	err := stream.Err()
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
+	acc := make(map[string]string, 0)
+	for _, refPropertyMapping := range refPropertyMappings {
+		val, err := refPropertyMapping.Context(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		for k, v := range val {
+			acc[k] = v
+		}
 	}
-	return stream.Val().(map[string]string), nil
+	return acc, nil
 }
 
 func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTypeMapping *ContentTypeMapping) (api.Context, error) {

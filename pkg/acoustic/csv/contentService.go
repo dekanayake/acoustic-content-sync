@@ -134,12 +134,14 @@ func (service *contentService) Create(contentType string, dataFeedPath string, c
 			}
 			response, createErr := contentClient.Create(content)
 			if createErr != nil {
+				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Error("Failed in creating  the content ")
 				failed = append(failed, ContentCreationFailedStatus{
 					CSVIDKey:   record.CSVRecordKey,
 					CSVIDValue: record.CSVRecordKeyValue(),
 					Error:      errors.ErrorWithStack(createErr),
 				})
 			} else {
+				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Info("Successfully created the content ")
 				success = append(success, ContentCreationSuccessStatus{
 					CSVIDKey:   record.CSVRecordKey,
 					CSVIDValue: record.CSVRecordKeyValue(),
