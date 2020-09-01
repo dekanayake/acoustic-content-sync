@@ -14,6 +14,7 @@ type AssetCreateRequest struct {
 	Tags        Tags     `json:"tags"`
 	Status      string   `json:"status"`
 	Profiles    []string `json:"profiles"`
+	LibraryID   string   `json:"libraryId"`
 }
 
 type AssetCreateResponse struct {
@@ -28,7 +29,8 @@ type AssetClient interface {
 		reader io.Reader,
 		resourceFileName string,
 		tags []string,
-		path string, status string, profiles []string) (*AssetCreateResponse, error)
+		path string, status string, profiles []string, libraryID string) (*AssetCreateResponse, error)
+	Delete(id string) error
 }
 
 type assetClient struct {
@@ -47,7 +49,7 @@ func (assetClient *assetClient) Create(
 	reader io.Reader,
 	resourceFileName string,
 	tags []string,
-	path string, status string, profiles []string) (*AssetCreateResponse, error) {
+	path string, status string, profiles []string, libraryID string) (*AssetCreateResponse, error) {
 	resourceCreateReq := AssetCreateRequest{
 		Name:        resourceFileName,
 		Description: resourceFileName,
@@ -55,6 +57,7 @@ func (assetClient *assetClient) Create(
 		Status:      status,
 		Tags:        Tags{Values: tags},
 		Profiles:    profiles,
+		LibraryID:   libraryID,
 	}
 	resourceCreateReqJson, err := json.Marshal(resourceCreateReq)
 	if err != nil {
@@ -80,5 +83,21 @@ func (assetClient *assetClient) Create(
 		return nil, errors.ErrorMessageWithStack("error in creating asset : " + "  " + string(errorString))
 	} else {
 		return nil, errors.ErrorMessageWithStack("error in creating asset : " + resp.Status())
+	}
+}
+
+func (assetClient assetClient) Delete(id string) error {
+	req := assetClient.c.NewRequest().SetPathParams(map[string]string{"id": id})
+
+	if resp, err := req.Delete(assetClient.acousticApiUrl + "/authoring/v1/assets/{id}"); err != nil {
+		return errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return errors.ErrorMessageWithStack("error in deleting asset : " + resp.Status() + "  " + string(errorString))
+	} else {
+		return errors.ErrorMessageWithStack("error in deleting asset : " + resp.Status())
 	}
 }

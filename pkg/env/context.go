@@ -25,6 +25,10 @@ func AcousticAPIUrl() string {
 	return GetOrPanic("AcousticAPIURL")
 }
 
+func LibraryID() string {
+	return GetOrPanic("LibraryID")
+}
+
 func AcousticAuthUserName() string {
 	return GetOrPanic("AcousticAuthUserName")
 }

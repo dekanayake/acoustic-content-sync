@@ -2,6 +2,15 @@ package api
 
 import "github.com/dekanayake/acoustic-content-sync/pkg/errors"
 
+type AssetType string
+
+const (
+	DOCUMENT AssetType = "document"
+	FILE     AssetType = "file"
+	IMAGE    AssetType = "image"
+	VIDEO    AssetType = "video"
+)
+
 type FieldType string
 
 const (

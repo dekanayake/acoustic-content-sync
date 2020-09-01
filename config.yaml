@@ -37,5 +37,19 @@ contentType:
 category:
   - parent: "TRS Brands"
     column: "Brand"
+delete:
+  - name: "Delete Reece Moodboard content"
+    assetType: document
+    search:
+      contentType: "Moodboard Reece Product"
+      classification: content
+      searchTerm: "tags:reece AND tags:moodboard AND tags:test"
+  - name: "Delete Reece Moodboard images"
+    assetType: image
+    search:
+      classification: asset
+      searchTerm: "tags:reece AND tags:moodboard AND tags:test"
+
+
 
 

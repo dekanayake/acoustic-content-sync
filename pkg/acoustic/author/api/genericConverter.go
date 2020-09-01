@@ -185,7 +185,7 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 	}
 	profileValues := profiles.([]string)
 	resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, tagsValue,
-		acousticAssetPath, env.ContentStatus(), profileValues)
+		acousticAssetPath, env.ContentStatus(), profileValues, env.LibraryID())
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}

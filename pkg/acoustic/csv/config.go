@@ -16,6 +16,7 @@ type ContentType interface {
 type ContentTypesMapping struct {
 	ContentType     []ContentTypeMapping `yaml:"contentType"`
 	CategoryMapping []CategoryMapping    `yaml:"category"`
+	DeleteMapping   []DeleteMapping      `yaml:"delete"`
 }
 
 type ContentTypeMapping struct {
@@ -29,6 +30,18 @@ type ContentTypeMapping struct {
 type CategoryMapping struct {
 	Parent string `yaml:"parent"`
 	Column string `yaml:"column"`
+}
+
+type DeleteMapping struct {
+	Name          string        `yaml:"name"`
+	AssetType     api.AssetType `yaml:"assetType"`
+	SearchMapping SearchMapping `yaml:"search"`
+}
+
+type SearchMapping struct {
+	ContentType    string `yaml:"contentType"`
+	Classification string `yaml:"classification"`
+	SearchTerm     string `yaml:"searchTerm"`
 }
 
 type ContentFieldMapping struct {
@@ -137,6 +150,7 @@ func (csvContentTypeMapping *ContentTypeMapping) GetFieldMapping(csvField string
 type Config interface {
 	GetContentType(contentModel string) (*ContentTypeMapping, error)
 	GetCategory(categoryName string) (*CategoryMapping, error)
+	GetDeleteMapping(name string) (*DeleteMapping, error)
 }
 
 type config struct {
@@ -181,4 +195,16 @@ func (config *config) GetContentType(contentType string) (*ContentTypeMapping, e
 	} else {
 		return nil, errors.ErrorMessageWithStack("config not yet set")
 	}
+}
+
+func (config *config) GetDeleteMapping(name string) (*DeleteMapping, error) {
+	deleteMapping := koazee.StreamOf(config.mappings.DeleteMapping).
+		Filter(func(deleteMapping DeleteMapping) bool {
+			return deleteMapping.Name == name
+		}).
+		First().Val().(DeleteMapping)
+	if &deleteMapping == nil {
+		return nil, errors.ErrorMessageWithStack("No delete mapping found for provided name :" + name)
+	}
+	return &deleteMapping, nil
 }

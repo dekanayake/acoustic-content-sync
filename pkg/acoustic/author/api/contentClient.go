@@ -8,6 +8,7 @@ import (
 
 type ContentClient interface {
 	Create(content Content) (*ContentCreateResponse, error)
+	Delete(id string) error
 }
 
 type contentClient struct {
@@ -19,6 +20,22 @@ func NewContentClient(acousticApiUrl string) ContentClient {
 	return &contentClient{
 		c:              Connect(),
 		acousticApiUrl: acousticApiUrl,
+	}
+}
+
+func (contentClient contentClient) Delete(id string) error {
+	req := contentClient.c.NewRequest().SetPathParams(map[string]string{"id": id}).SetError(ContentAuthoringErrorResponse{})
+
+	if resp, err := req.Delete(contentClient.acousticApiUrl + "/authoring/v1/content/{id}"); err != nil {
+		return errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return errors.ErrorMessageWithStack("error in deleting content : " + resp.Status() + "  " + string(errorString))
+	} else {
+		return errors.ErrorMessageWithStack("error in deleting content : " + resp.Status())
 	}
 }
 
