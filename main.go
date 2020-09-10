@@ -24,24 +24,23 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
-func main() {
+func reece() {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
+	err := catService.Create("TRS Brands", "data.csv", "config.yaml")
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
 
-	//catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
-	//err := catService.Create("TRS Brands", "data.csv", "config.yaml")
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
-	//
-	//err = catService.Create("TRS Product Category", "data.csv", "config.yaml")
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
-	//
-	//err = catService.Create("TRS Product Color", "data.csv", "config.yaml")
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
+	err = catService.Create("TRS Product Category", "data.csv", "config.yaml")
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+	err = catService.Create("TRS Product Color", "data.csv", "config.yaml")
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
 
 	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "0e958689-13ce-4eda-9c68-bb4dcc09dd73")
 	status, err := contentService.Create("f5fe4c5c-67db-465a-aba6-75618cdcbf30", "data.csv", "config.yaml")
@@ -55,15 +54,62 @@ func main() {
 		errorHandling.WithError(err).Panic(err)
 	}
 
-	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
-	//err := deleteService.Delete("0e958689-13ce-4eda-9c68-bb4dcc09dd73", "Delete Reece Moodboard content", "config.yaml")
+	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	err = deleteService.Delete("0e958689-13ce-4eda-9c68-bb4dcc09dd73", "Delete Reece Moodboard content", "config.yaml")
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+	err = deleteService.Delete("0e958689-13ce-4eda-9c68-bb4dcc09dd73", "Delete Reece Moodboard images", "config.yaml")
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func nonreece() {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	//catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
+	//err := catService.Create("Moodboard Non Reece Brands", "non_reece_data.csv", "config_non_reece_products.yaml")
 	//if err != nil {
 	//	errorHandling.WithError(err).Panic(err)
 	//}
 	//
-	//err = deleteService.Delete("0e958689-13ce-4eda-9c68-bb4dcc09dd73", "Delete Reece Moodboard images", "config.yaml")
+	//err = catService.Create("Moodboard Non Reece Categories", "non_reece_data.csv", "config_non_reece_products.yaml")
 	//if err != nil {
 	//	errorHandling.WithError(err).Panic(err)
 	//}
+	//
+	//err = catService.Create("TRS Product Color", "non_reece_data.csv", "config_non_reece_products.yaml")
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "0e958689-13ce-4eda-9c68-bb4dcc09dd73")
+	status, err := contentService.Create("4c8b4730-7503-485a-9c8e-23af27c61307", "non_reece_data.csv", "config_non_reece_products.yaml")
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+	//
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("0e958689-13ce-4eda-9c68-bb4dcc09dd73", "Delete Non Reece Moodboard content", "config_non_reece_products.yaml")
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+	//
+	//err = deleteService.Delete("0e958689-13ce-4eda-9c68-bb4dcc09dd73", "Delete Non Reece Moodboard images", "config_non_reece_products.yaml")
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+}
+
+func main() {
+
+	nonreece()
 
 }

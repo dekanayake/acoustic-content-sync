@@ -96,8 +96,8 @@ func (element LinkElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
-func (element CategoryElement) Convert(data interface{}) (Element, error) {
-	catItems := strings.Split(data.(GenericData).Value, "/")
+func categoryIds(category string) ([]string, error) {
+	catItems := strings.Split(category, "/")
 	if len(catItems) == 1 {
 		return nil, errors.ErrorMessageWithStack("empty category :" + catItems[0])
 	}
@@ -135,7 +135,34 @@ func (element CategoryElement) Convert(data interface{}) (Element, error) {
 			return categoryItem.Id
 		}).Out().Val().([]string)
 
-	element.CategoryIds = catIds
+	return catIds, nil
+}
+
+func (element CategoryElement) Convert(data interface{}) (Element, error) {
+	cats := strings.Split(data.(GenericData).Value, ",")
+	if len(cats) == 0 {
+		return nil, errors.ErrorMessageWithStack("No categories :" + data.(GenericData).Value)
+	}
+	categoryName := strings.Split(cats[0], "/")[0]
+	cats = koazee.StreamOf(cats).
+		Map(func(cat string) string {
+			if !strings.Contains(cat, categoryName) {
+				return categoryName + "/" + cat
+			} else {
+				return cat
+			}
+		}).Do().Out().Val().([]string)
+	allCatIds := make([]string, 0, 0)
+	for _, cat := range cats {
+		catIds, err := categoryIds(strings.TrimSpace(cat))
+		if err != nil {
+			return nil, err
+		}
+		for _, catId := range catIds {
+			allCatIds = append(allCatIds, catId)
+		}
+	}
+	element.CategoryIds = allCatIds
 	return element, nil
 }
 

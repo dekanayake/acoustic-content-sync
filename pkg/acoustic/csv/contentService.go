@@ -116,6 +116,7 @@ func (service *contentService) Create(contentType string, dataFeedPath string, c
 				})
 			err := acousticContentDataOut.Err().UserError()
 			if err != nil {
+				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Error("Failed in creating  the content ")
 				failed = append(failed, ContentCreationFailedStatus{
 					CSVIDKey:   record.CSVRecordKey,
 					CSVIDValue: record.CSVRecordKeyValue(),

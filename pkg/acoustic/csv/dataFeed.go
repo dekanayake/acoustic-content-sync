@@ -7,6 +7,7 @@ import (
 	"github.com/wesovilabs/koazee/stream"
 	"io"
 	"os"
+	"strings"
 )
 
 type contentData struct {
@@ -125,6 +126,6 @@ func (dataRow *dataRow) Get(columnName string) (string, error) {
 	if _, ok := dataRow.columns[columnName]; !ok {
 		return "", errors.ErrorMessageWithStack("No value found for column name :" + columnName)
 	} else {
-		return dataRow.columns[columnName], nil
+		return strings.TrimSpace(dataRow.columns[columnName]), nil
 	}
 }

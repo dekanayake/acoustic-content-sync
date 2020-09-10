@@ -53,6 +53,8 @@ func (contentClient *contentClient) Create(content Content) (*ContentCreateRespo
 		errorString, _ := json.MarshalIndent(error, "", "\t")
 		return nil, errors.ErrorMessageWithStack("error in creating content : " + resp.Status() + "  " + string(errorString))
 	} else {
-		return nil, errors.ErrorMessageWithStack("error in creating content : " + resp.Status())
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in creating content : " + resp.Status() + "  " + string(errorString))
 	}
 }

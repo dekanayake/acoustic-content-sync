@@ -116,7 +116,10 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 		if err != nil {
 			return errors.ErrorWithStack(err)
 		}
-		newCategories = append(newCategories, categoryName+"/"+val)
+		for _, category := range strings.Split(val, ",") {
+			newCategories = append(newCategories, categoryName+"/"+strings.TrimSpace(category))
+		}
+
 	}
 
 	existingCategories := koazee.StreamOf(categories).
