@@ -3,6 +3,7 @@ package csv
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 )
 
@@ -29,12 +30,16 @@ func NewDeleteService(acousticAuthApiUrl string) DeleteService {
 func delete(d deleteService, assetType api.AssetType, id string) error {
 	if assetType == api.DOCUMENT {
 		err := d.contentClient.Delete(id)
+		log.WithField("type", api.DOCUMENT).WithField("id", id).Info("Deleted")
 		if err != nil {
+			log.WithField("type", api.DOCUMENT).WithField("id", id).Info("Delete Failed")
 			return errors.ErrorWithStack(err)
 		}
 	} else {
 		err := d.assetClient.Delete(id)
+		log.WithField("type", api.DOCUMENT).WithField("id", id).Info("Deleted")
 		if err != nil {
+			log.WithField("type", api.DOCUMENT).WithField("id", id).Info("Delete Failed")
 			return errors.ErrorWithStack(err)
 		}
 	}
@@ -58,6 +63,13 @@ func (d deleteService) Delete(libraryId string, deleteMappingName string, config
 		if err != nil {
 			return errors.ErrorWithStack(err)
 		}
+		if searchResponse.IsCountLessThanStart() {
+			start, rows = searchResponse.NextPagination()
+			searchResponse, err = d.searchClient.Search(libraryId, searchRequest, api.Pagination{Start: start, Rows: rows})
+			if err != nil {
+				return errors.ErrorWithStack(err)
+			}
+		}
 		err = koazee.StreamOf(searchResponse.Documents).
 			ForEach(func(documentItem api.DocumentItem) error {
 				err := delete(d, deleteMapping.AssetType, documentItem.Document.ID)
@@ -72,7 +84,7 @@ func (d deleteService) Delete(libraryId string, deleteMappingName string, config
 		if !searchResponse.HasNext() {
 			break
 		} else {
-			start += start + rows + 1
+			start, rows = searchResponse.NextPagination()
 		}
 	}
 	return nil

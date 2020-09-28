@@ -50,6 +50,20 @@ func (searchResponse SearchResponse) HasNext() bool {
 	return (searchResponse.Start + searchResponse.Rows) < searchResponse.Count
 }
 
+func (searchResponse SearchResponse) IsCountLessThanStart() bool {
+	return searchResponse.Count <= searchResponse.Start
+}
+
+func (searchResponse SearchResponse) NextPagination() (int, int) {
+	if searchResponse.Count <= searchResponse.Start {
+		return 0, searchResponse.Count
+	} else {
+		start := searchResponse.Start + searchResponse.Rows + 1
+		return start, searchResponse.Rows
+	}
+
+}
+
 func (filterCriteria GenericFilterCriteria) Query() string {
 	return filterCriteria.Field + ":" + filterCriteria.Value
 }
