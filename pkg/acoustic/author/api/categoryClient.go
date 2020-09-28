@@ -98,7 +98,7 @@ func (categoryClient *categoryClient) Categories(categoryName string) ([]Categor
 				break
 			}
 		} else {
-			return nil, errors.ErrorMessageWithStack("error in creating content : " + resp.Status())
+			return nil, errors.ErrorMessageWithStack("error in getting category : " + resp.Status())
 		}
 	}
 	return categoryItems, nil

@@ -13,12 +13,14 @@ var instance *resty.Client
 
 func Connect() *resty.Client {
 	once.Do(func() {
-		token, err := NewAuthClient(env.AcousticAuthUrl()).Authenticate(env.AcousticAuthUserName(), env.AcousticAuthPassword())
+		authCookies, err := NewAuthClient(env.AcousticAuthUrl()).Authenticate(env.AcousticAuthUserName(), env.AcousticAuthPassword())
 		if err != nil {
 			log.Panic("auth failed", err)
 		}
-		instance = resty.New().SetCookie(token).SetDebug(env.IsDebugEnabled())
+		instance = resty.New().SetDebug(env.IsDebugEnabled())
+		for _, authCookie := range authCookies {
+			instance = instance.SetCookie(authCookie)
+		}
 	})
-
 	return instance
 }
