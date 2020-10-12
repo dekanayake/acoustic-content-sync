@@ -6,12 +6,13 @@ import (
 	"github.com/wesovilabs/koazee"
 )
 
-func convert(columnHeader string, configTypeMapping *ContentTypeMapping, dataRow DataRow) (api.GenericData, error) {
+func convert(acousticField string, configTypeMapping *ContentTypeMapping, dataRow DataRow) (api.GenericData, error) {
 	data := api.GenericData{}
-	acousticFieldMapping, err := configTypeMapping.GetFieldMapping(columnHeader)
+	acousticFieldMapping, err := configTypeMapping.GetFieldMappingByAcousticField(acousticField)
 	if err != nil {
 		return data, errors.ErrorWithStack(err)
 	}
+	columnHeader := acousticFieldMapping.CsvProperty
 	data.Name = acousticFieldMapping.AcousticProperty
 	data.Type = acousticFieldMapping.PropertyType
 	value, err := dataRow.Get(columnHeader)
@@ -40,16 +41,13 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
-	columnHeaders, err := dataFeed.Headers()
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
+	acousticFields := configTypeMapping.GetAcousticFields()
 	acousticDataList := make([]api.AcousticDataRecord, 0, dataFeed.RecordCount())
 	for ok := true; ok; ok = dataFeed.HasNext() {
 		dataRow := dataFeed.Next()
-		acousticDataOut := koazee.StreamOf(columnHeaders).
-			Map(func(columnHeader string) (api.GenericData, error) {
-				return convert(columnHeader, configTypeMapping, dataRow)
+		acousticDataOut := koazee.StreamOf(acousticFields).
+			Map(func(acousticField string) (api.GenericData, error) {
+				return convert(acousticField, configTypeMapping, dataRow)
 			}).Do().Out()
 
 		err := acousticDataOut.Err()

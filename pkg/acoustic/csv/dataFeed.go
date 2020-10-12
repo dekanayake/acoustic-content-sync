@@ -3,6 +3,7 @@ package csv
 import (
 	"encoding/csv"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	"github.com/dimchansky/utfbom"
 	"github.com/wesovilabs/koazee"
 	"github.com/wesovilabs/koazee/stream"
 	"io"
@@ -19,7 +20,8 @@ type dataRow struct {
 }
 
 func load(csvFile *os.File) (*contentData, error) {
-	records := csv.NewReader(csvFile)
+	reader, _ := utfbom.Skip(csvFile)
+	records := csv.NewReader(reader)
 	headerRecord, err := records.Read()
 	if err == io.EOF {
 		return nil, errors.ErrorMessageWithStack("CSV file is empty. ")

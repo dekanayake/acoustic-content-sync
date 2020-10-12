@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"github.com/cenkalti/backoff/v4"
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
@@ -88,6 +89,71 @@ func NewContentService(acousticAuthApiUrl string, acousticContentLib string) Con
 	}
 }
 
+func createContentWithRetry(record api.AcousticDataRecord, contentType string, contentClient api.ContentClient,
+	acousticContentLib string) (*api.ContentCreateResponse, error) {
+	response, err := createContent(record, contentType, contentClient, acousticContentLib)
+	if err != nil && errors.IsRetryableError(err) {
+		ticker := backoff.NewTicker(backoff.NewExponentialBackOff())
+		times := 1
+		for range ticker.C {
+			if times == 3 {
+				ticker.Stop()
+				return response, err
+			}
+			response, err = createContent(record, contentType, contentClient, acousticContentLib)
+			if err != nil && errors.IsRetryableError(err) {
+				times++
+				continue
+			} else {
+				ticker.Stop()
+				return response, err
+			}
+			ticker.Stop()
+			break
+		}
+	}
+	return response, err
+}
+
+func createContent(record api.AcousticDataRecord, contentType string, contentClient api.ContentClient,
+	acousticContentLib string) (*api.ContentCreateResponse, error) {
+	acousticContentDataOut := koazee.StreamOf(record.Values).
+		Reduce(func(acc map[string]interface{}, columnData api.GenericData) (map[string]interface{}, error) {
+			if acc == nil {
+				acc = make(map[string]interface{})
+			}
+			element, err := api.Build(columnData.Type)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			element, err = element.Convert(columnData)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			acc[columnData.Name] = element
+			return acc, nil
+		})
+	err := acousticContentDataOut.Err().UserError()
+	if err != nil {
+		return nil, err
+	}
+	acousticContentData := acousticContentDataOut.Val().(map[string]interface{})
+	content := api.Content{
+		Name:      record.Name(),
+		TypeId:    contentType,
+		Status:    env.ContentStatus(),
+		LibraryID: acousticContentLib,
+		Elements:  acousticContentData,
+		Tags:      record.Tags,
+	}
+	response, createErr := contentClient.Create(content)
+	if createErr != nil {
+		return nil, createErr
+	} else {
+		return response, nil
+	}
+}
+
 func (service *contentService) Create(contentType string, dataFeedPath string, configPath string) (ContentCreationStatus, error) {
 	contentClient := api.NewContentClient(service.acousticAuthApiUrl)
 	records, err := Transform(contentType, dataFeedPath, configPath)
@@ -98,23 +164,7 @@ func (service *contentService) Create(contentType string, dataFeedPath string, c
 	success := make([]ContentCreationSuccessStatus, 0)
 	koazee.StreamOf(records).
 		ForEach(func(record api.AcousticDataRecord) {
-			acousticContentDataOut := koazee.StreamOf(record.Values).
-				Reduce(func(acc map[string]interface{}, columnData api.GenericData) (map[string]interface{}, error) {
-					if acc == nil {
-						acc = make(map[string]interface{})
-					}
-					element, err := api.Build(columnData.Type)
-					if err != nil {
-						return nil, errors.ErrorWithStack(err)
-					}
-					element, err = element.Convert(columnData)
-					if err != nil {
-						return nil, errors.ErrorWithStack(err)
-					}
-					acc[columnData.Name] = element
-					return acc, nil
-				})
-			err := acousticContentDataOut.Err().UserError()
+			response, err := createContentWithRetry(record, contentType, contentClient, service.acousticContentLib)
 			if err != nil {
 				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Error("Failed in creating  the content ")
 				failed = append(failed, ContentCreationFailedStatus{
@@ -122,26 +172,7 @@ func (service *contentService) Create(contentType string, dataFeedPath string, c
 					CSVIDValue: record.CSVRecordKeyValue(),
 					Error:      errors.ErrorWithStack(err),
 				})
-				return
-			}
-			acousticContentData := acousticContentDataOut.Val().(map[string]interface{})
-			content := api.Content{
-				Name:      record.Name(),
-				TypeId:    contentType,
-				Status:    env.ContentStatus(),
-				LibraryID: service.acousticContentLib,
-				Elements:  acousticContentData,
-				Tags:      record.Tags,
-			}
-			response, createErr := contentClient.Create(content)
-			if createErr != nil {
-				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Error("Failed in creating  the content ")
-				failed = append(failed, ContentCreationFailedStatus{
-					CSVIDKey:   record.CSVRecordKey,
-					CSVIDValue: record.CSVRecordKeyValue(),
-					Error:      errors.ErrorWithStack(createErr),
-				})
-			} else {
+			} else if response != nil {
 				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Info("Successfully created the content ")
 				success = append(success, ContentCreationSuccessStatus{
 					CSVIDKey:   record.CSVRecordKey,

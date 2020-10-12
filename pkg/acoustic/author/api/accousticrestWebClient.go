@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/resty.v1"
-	"log"
 	"sync"
 )
 
@@ -13,13 +13,22 @@ var instance *resty.Client
 
 func Connect() *resty.Client {
 	once.Do(func() {
-		authCookies, err := NewAuthClient(env.AcousticAuthUrl()).Authenticate(env.AcousticAuthUserName(), env.AcousticAuthPassword())
-		if err != nil {
-			log.Panic("auth failed", err)
+		authUserName := env.AcousticAuthUserName()
+		password := env.AcousticAuthPassword()
+		apiKey := env.AcousticAPIKey()
+		if authUserName == "" && apiKey == "" {
+			log.Panic("No either user name of api values is provided ")
 		}
-		instance = resty.New().SetDebug(env.IsDebugEnabled())
-		for _, authCookie := range authCookies {
-			instance = instance.SetCookie(authCookie)
+		if authUserName != "" {
+			if password == "" {
+				log.Panic("Password not provided for acoustic user auth for user name :" + authUserName)
+			}
+			log.WithField("User name", authUserName).Info("Setting the user name as basic auth")
+			instance = resty.New().SetBasicAuth(authUserName, password).SetDebug(env.IsDebugEnabled())
+		}
+		if apiKey != "" {
+			log.WithField("APIKey", apiKey).Info("Setting the api key as basic auth")
+			instance = resty.New().SetBasicAuth("AcousticAPIKey", apiKey).SetDebug(env.IsDebugEnabled())
 		}
 	})
 	return instance

@@ -5,6 +5,9 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/wesovilabs/koazee"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -37,6 +40,7 @@ const (
 	AcousticAssetBasePath ContextKey = "AcousticAssetBasePath"
 	AssetLocation         ContextKey = "AssetLocation"
 	TagList               ContextKey = "Tags"
+	IsWebUrl              ContextKey = "IsWebUrl"
 )
 
 func (context Context) getValue(key ContextKey) (interface{}, error) {
@@ -177,17 +181,70 @@ func getAssetName(values map[string]string) string {
 	return assetName
 }
 
-func (element ImageElement) Convert(data interface{}) (Element, error) {
-	imgData := data.(GenericData)
+func getLocalAssetFile(imgData GenericData) (*os.File, string, error) {
 	imgDataContext := imgData.Context
 	assetLocation, err := imgDataContext.getValue(AssetLocation)
 	if err != nil {
-		return nil, errors.ErrorWithStack(err)
+		return nil, "", errors.ErrorWithStack(err)
 	}
 	assetFullPath := assetLocation.(string) + "/" + imgData.Value
 	assetExtension := filepath.Ext(assetFullPath)
 	assetFile, err := os.Open(assetFullPath)
-	defer assetFile.Close()
+	if err != nil {
+		return nil, "", errors.ErrorWithStack(err)
+	} else {
+		return assetFile, assetExtension, nil
+	}
+}
+
+func getWebAssetFile(imgData GenericData) (*os.File, string, error) {
+	assetUrl := imgData.Value
+	assetExtension := filepath.Ext(assetUrl)
+	response, err := http.Get(assetUrl)
+	if err != nil {
+		return nil, "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		return nil, "", errors.ErrorMessageWithStack("Received non 200 response code")
+	}
+	file, err := ioutil.TempFile("", "acousticWebAsset")
+	if err != nil {
+		return nil, "", errors.ErrorWithStack(err)
+	}
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		return nil, "", errors.ErrorWithStack(err)
+	}
+
+	return file, assetExtension, nil
+
+}
+
+func (element ImageElement) Convert(data interface{}) (Element, error) {
+	imgData := data.(GenericData)
+	imgDataContext := imgData.Context
+	isWebUrl, err := imgDataContext.getValue(IsWebUrl)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	var assetFile *os.File
+	var assetExtension string
+	if isWebUrl.(bool) {
+		assetFile, assetExtension, err = getWebAssetFile(imgData)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		defer assetFile.Close()
+		defer os.Remove(assetFile.Name())
+	} else {
+		assetFile, assetExtension, err = getLocalAssetFile(imgData)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		defer assetFile.Close()
+	}
+
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}

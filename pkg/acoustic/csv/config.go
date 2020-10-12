@@ -53,6 +53,7 @@ type ContentFieldMapping struct {
 	Profiles              []string             `yaml:"profiles"`
 	AcousticAssetBasePath string               `yaml:"acousticAssetBasePath"`
 	AssetLocation         string               `yaml:"assetLocation"`
+	IsWebUrl              bool                 `yaml:"isWebUrl"`
 }
 
 type RefPropertyMapping struct {
@@ -104,6 +105,7 @@ func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTy
 			api.AcousticAssetBasePath: contentFieldMapping.AcousticAssetBasePath,
 			api.AssetLocation:         contentFieldMapping.AssetLocation,
 			api.TagList:               configTypeMapping.Tags,
+			api.IsWebUrl:              contentFieldMapping.IsWebUrl,
 		}}, nil
 	} else {
 		return api.Context{}, nil
@@ -124,18 +126,26 @@ func (csvContentTypesMapping *ContentTypesMapping) GetContentTypeMapping(content
 	}
 }
 
-func (csvContentTypeMapping *ContentTypeMapping) GetFieldMapping(csvField string) (*ContentFieldMapping, error) {
+func (csvContentTypeMapping *ContentTypeMapping) GetFieldMappingByAcousticField(acousticField string) (*ContentFieldMapping, error) {
 	fieldMapping := koazee.StreamOf(csvContentTypeMapping.FieldMapping).
 		Filter(func(contentFieldMapping ContentFieldMapping) bool {
-			return contentFieldMapping.CsvProperty == csvField
+			return contentFieldMapping.AcousticProperty == acousticField
 		}).
 		First().Val().(ContentFieldMapping)
 
 	if &fieldMapping != nil {
 		return &fieldMapping, nil
 	} else {
-		return nil, errors.ErrorMessageWithStack("No mapping found for field :" + csvField)
+		return nil, errors.ErrorMessageWithStack("No mapping found for field :" + acousticField)
 	}
+}
+
+func (csvContentTypeMapping *ContentTypeMapping) GetAcousticFields() []string {
+	return koazee.StreamOf(csvContentTypeMapping.FieldMapping).
+		Map(func(contentFieldMapping ContentFieldMapping) string {
+			return contentFieldMapping.AcousticProperty
+		}).
+		Out().Val().([]string)
 }
 
 type Config interface {

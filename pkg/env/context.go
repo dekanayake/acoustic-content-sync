@@ -13,6 +13,11 @@ func GetOrPanic(variable string) string {
 	return varValue
 }
 
+func Get(variable string) string {
+	varValue := os.Getenv(variable)
+	return varValue
+}
+
 func IsDebugEnabled() bool {
 	return os.Getenv("DebugEnabled") == "true"
 }
@@ -30,11 +35,15 @@ func LibraryID() string {
 }
 
 func AcousticAuthUserName() string {
-	return GetOrPanic("AcousticAuthUserName")
+	return Get("AcousticAuthUserName")
 }
 
 func AcousticAuthPassword() string {
-	return GetOrPanic("AcousticAuthPassword")
+	return Get("AcousticAuthPassword")
+}
+
+func AcousticAPIKey() string {
+	return Get("AcousticAPIKey")
 }
 
 func ContentStatus() string {
