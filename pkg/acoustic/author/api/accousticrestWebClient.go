@@ -25,8 +25,7 @@ func Connect() *resty.Client {
 			}
 			log.WithField("User name", authUserName).Info("Setting the user name as basic auth")
 			instance = resty.New().SetBasicAuth(authUserName, password).SetDebug(env.IsDebugEnabled())
-		}
-		if apiKey != "" {
+		} else if apiKey != "" {
 			log.WithField("APIKey", apiKey).Info("Setting the api key as basic auth")
 			instance = resty.New().SetBasicAuth("AcousticAPIKey", apiKey).SetDebug(env.IsDebugEnabled())
 		}

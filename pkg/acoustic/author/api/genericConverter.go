@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	"github.com/dekanayake/acoustic-content-sync/pkg/image"
 	"github.com/wesovilabs/koazee"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -41,6 +43,9 @@ const (
 	AssetLocation         ContextKey = "AssetLocation"
 	TagList               ContextKey = "Tags"
 	IsWebUrl              ContextKey = "IsWebUrl"
+	EnforceImageDimension ContextKey = "EnforceImageDimension"
+	ImageHeight           ContextKey = "ImageHeight"
+	ImageWidth            ContextKey = "ImageWidth"
 )
 
 func (context Context) getValue(key ContextKey) (interface{}, error) {
@@ -48,6 +53,18 @@ func (context Context) getValue(key ContextKey) (interface{}, error) {
 		return val, nil
 	} else {
 		return nil, errors.ErrorMessageWithStack("no context value found for key :" + string(key))
+	}
+}
+
+func (context Context) getUintValue(key ContextKey) (uint, error) {
+	if val, ok := context.Data[key]; ok {
+		if castVal, ok := val.(uint); ok {
+			return castVal, nil
+		} else {
+			return 0, errors.ErrorMessageWithStack("Cannot cast the provided value" + reflect.TypeOf(val).String())
+		}
+	} else {
+		return 0, errors.ErrorMessageWithStack("no context value found for key :" + string(key))
 	}
 }
 
@@ -243,6 +260,33 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 			return nil, errors.ErrorWithStack(err)
 		}
 		defer assetFile.Close()
+	}
+	enforceImageDimension, err := imgDataContext.getValue(EnforceImageDimension)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	if enforceImageDimension.(bool) {
+		imageWidth, err := imgDataContext.getUintValue(ImageWidth)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		imageHeight, err := imgDataContext.getUintValue(ImageHeight)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		ok, err := image.GetImageService().IsImageInExpectedDimension(imageWidth, imageHeight, assetFile)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if !ok {
+			resizedAsset, err := image.GetImageService().Resize(imageWidth, imageHeight, assetFile)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			assetFile = resizedAsset
+			defer resizedAsset.Close()
+			defer os.Remove(resizedAsset.Name())
+		}
 	}
 
 	if err != nil {

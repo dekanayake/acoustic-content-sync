@@ -9,5 +9,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/wesovilabs/koazee v0.0.5
+	gopkg.in/gographics/imagick.v3 v3.3.0
 	gopkg.in/resty.v1 v1.12.0
 )

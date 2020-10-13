@@ -54,6 +54,9 @@ type ContentFieldMapping struct {
 	AcousticAssetBasePath string               `yaml:"acousticAssetBasePath"`
 	AssetLocation         string               `yaml:"assetLocation"`
 	IsWebUrl              bool                 `yaml:"isWebUrl"`
+	ImageWidth            uint                 `yaml:"imageWidth"`
+	ImageHeight           uint                 `yaml:"imageHeight"`
+	EnforceImageDimension bool                 `yaml:"enforceImageDimension"`
 }
 
 type RefPropertyMapping struct {
@@ -106,6 +109,9 @@ func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTy
 			api.AssetLocation:         contentFieldMapping.AssetLocation,
 			api.TagList:               configTypeMapping.Tags,
 			api.IsWebUrl:              contentFieldMapping.IsWebUrl,
+			api.EnforceImageDimension: contentFieldMapping.EnforceImageDimension,
+			api.ImageWidth:            contentFieldMapping.ImageWidth,
+			api.ImageHeight:           contentFieldMapping.ImageHeight,
 		}}, nil
 	} else {
 		return api.Context{}, nil

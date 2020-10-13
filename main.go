@@ -67,26 +67,27 @@ func reece() {
 	//}
 }
 
-func nonreece() {
+func nonreece(feedName string, configName string) {
+
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-	//catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
-	//err := catService.Create("Moodboard Non Reece Brands", "external_products_aura.csv", "config_non_reece_products.yaml")
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
-	//
-	//err = catService.Create("Moodboard Non Reece Categories", "external_products_aura.csv", "config_non_reece_products.yaml")
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
-	//
-	//err = catService.Create("TRS Product Color", "external_products_aura.csv", "config_non_reece_products.yaml")
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
+	catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
+	err := catService.Create("Moodboard Non Reece Brands", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+	err = catService.Create("Moodboard Non Reece Categories", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+	err = catService.Create("TRS Product Color", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
 
 	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "ff8c36e0-cc3d-48a0-8efe-9a4de800ce14")
-	status, err := contentService.Create("4c8b4730-7503-485a-9c8e-23af27c61307", "external_products_aura.csv", "config_non_reece_products_aura.yaml")
+	status, err := contentService.Create("4c8b4730-7503-485a-9c8e-23af27c61307", feedName, configName)
 	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
 	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
 	if status.FailuresExist() {
@@ -109,26 +110,26 @@ func nonreece() {
 	//}
 }
 
-func nonreeceswatches() {
+func nonreeceswatches(feedName string, configName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
-	err := catService.Create("Moodboard Non Reece Brands", "non_reece_caeserstone_swatches.csv", "config_non_reece_products_caeserstone_swatches.yaml")
+	err := catService.Create("Moodboard Non Reece Brands", feedName, configName)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
 
-	err = catService.Create("Moodboard Non Reece Categories", "non_reece_caeserstone_swatches.csv", "config_non_reece_products_caeserstone_swatches.yaml")
+	err = catService.Create("Moodboard Non Reece Categories", feedName, configName)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
 
-	err = catService.Create("TRS Product Color", "non_reece_caeserstone_swatches.csv", "config_non_reece_products_caeserstone_swatches.yaml")
+	err = catService.Create("TRS Product Color", feedName, configName)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
 
 	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "ff8c36e0-cc3d-48a0-8efe-9a4de800ce14")
-	status, err := contentService.Create("4c8b4730-7503-485a-9c8e-23af27c61307", "non_reece_caeserstone_swatches.csv", "config_non_reece_products_caeserstone_swatches.yaml")
+	status, err := contentService.Create("4c8b4730-7503-485a-9c8e-23af27c61307", feedName, configName)
 	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
 	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
 	if status.FailuresExist() {
@@ -152,7 +153,8 @@ func nonreeceswatches() {
 }
 
 func main() {
-
-	nonreeceswatches()
+	feedName := "non_reece_tilecloud.csv"
+	configName := "config_non_reece_products_tilecloud.yaml"
+	nonreece(feedName, configName)
 
 }
