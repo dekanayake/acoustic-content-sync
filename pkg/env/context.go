@@ -50,6 +50,14 @@ func ContentStatus() string {
 	return GetOrPanic("ContentStatus")
 }
 
+func CategoryHierarchySeperator() string {
+	return GetOrPanic("CategoryHierarchySeperator")
+}
+
+func MultipleCategoriesSeperator() string {
+	return GetOrPanic("MultipleCategoriesSeperator")
+}
+
 func LogErrorsToFile() bool {
 	return GetOrPanic("WriteErrorsToFile") == "true"
 }

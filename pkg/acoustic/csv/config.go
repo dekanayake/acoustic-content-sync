@@ -2,6 +2,7 @@ package csv
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
@@ -66,7 +67,7 @@ type RefPropertyMapping struct {
 
 func (contentFieldMapping ContentFieldMapping) Value(value string) string {
 	if api.FieldType(contentFieldMapping.PropertyType) == api.Category {
-		return contentFieldMapping.CategoryName + "/" + value
+		return contentFieldMapping.CategoryName + env.CategoryHierarchySeperator() + value
 	} else {
 		return value
 	}

@@ -118,7 +118,7 @@ func (element LinkElement) Convert(data interface{}) (Element, error) {
 }
 
 func categoryIds(category string) ([]string, error) {
-	catItems := strings.Split(category, "/")
+	catItems := strings.Split(category, env.CategoryHierarchySeperator())
 	if len(catItems) == 1 {
 		return nil, errors.ErrorMessageWithStack("empty category :" + catItems[0])
 	}
@@ -139,7 +139,7 @@ func categoryIds(category string) ([]string, error) {
 				if acc == "" {
 					acc += catNamePath
 				} else {
-					acc += "/" + catNamePath
+					acc += env.CategoryHierarchySeperator() + catNamePath
 				}
 				return acc
 			}).String()
@@ -150,7 +150,7 @@ func categoryIds(category string) ([]string, error) {
 		Filter(func(categoryItem CategoryItem) bool {
 			fullNamePath := categoryItem.FullNamePath()
 			contains, _ := koazee.StreamOf(catNamePaths).Contains(fullNamePath)
-			return strings.Contains(fullNamePath, "/") && contains
+			return strings.Contains(fullNamePath, env.CategoryHierarchySeperator()) && contains
 		}).
 		Map(func(categoryItem CategoryItem) string {
 			return categoryItem.Id
@@ -164,11 +164,11 @@ func (element CategoryElement) Convert(data interface{}) (Element, error) {
 	if len(cats) == 0 {
 		return nil, errors.ErrorMessageWithStack("No categories :" + data.(GenericData).Value)
 	}
-	categoryName := strings.Split(cats[0], "/")[0]
+	categoryName := strings.Split(cats[0], env.CategoryHierarchySeperator())[0]
 	cats = koazee.StreamOf(cats).
 		Map(func(cat string) string {
 			if !strings.Contains(cat, categoryName) {
-				return categoryName + "/" + cat
+				return categoryName + env.CategoryHierarchySeperator() + cat
 			} else {
 				return cat
 			}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/wesovilabs/koazee"
 	"gopkg.in/resty.v1"
@@ -35,7 +36,7 @@ func (categoryItem *CategoryItem) FullNamePath() string {
 			if acc == "" {
 				acc += namePath
 			} else {
-				acc += "/" + namePath
+				acc += env.CategoryHierarchySeperator() + namePath
 			}
 			return acc
 		}).String()
@@ -44,6 +45,7 @@ func (categoryItem *CategoryItem) FullNamePath() string {
 type CategoryClient interface {
 	Categories(categoryName string) ([]CategoryItem, error)
 	CreateCategory(parentCategoryID string, categoryName string) (CategoryItem, error)
+	DeleteCategory(categoryID string) error
 }
 
 type categoryClient struct {
@@ -72,6 +74,23 @@ func (categoryClient categoryClient) CreateCategory(parentCategoryID string, cat
 		return CategoryItem{}, errors.ErrorMessageWithStack("error in creating content : " + resp.Status() + "  " + string(errorString))
 	} else {
 		return CategoryItem{}, errors.ErrorMessageWithStack("error in creating content : " + resp.Status())
+	}
+}
+
+func (categoryClient categoryClient) DeleteCategory(categoryID string) error {
+	req := categoryClient.c.NewRequest().SetPathParams(map[string]string{
+		"id": categoryID,
+	})
+	if resp, err := req.Delete(categoryClient.acousticApiUrl + "/authoring/v1/categories/{id}"); err != nil {
+		return errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error()
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return errors.ErrorMessageWithStack("error in deleting category : " + resp.Status() + "  " + string(errorString))
+	} else {
+		return errors.ErrorMessageWithStack("error in deleting category : " + resp.Status())
 	}
 }
 

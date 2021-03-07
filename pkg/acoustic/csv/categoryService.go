@@ -2,13 +2,16 @@ package csv
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 	"strings"
 )
 
 type CategoryService interface {
 	Create(categoryName string, dataFeedPath string, configPath string) error
+	Delete(categoryId string) error
 }
 
 type categoryService struct {
@@ -29,7 +32,7 @@ type category struct {
 }
 
 func (category category) fullNamePath() []string {
-	return strings.Split(category.fullCategoryPath, "/")
+	return strings.Split(category.fullCategoryPath, env.CategoryHierarchySeperator())
 }
 
 func (category category) childCategory() string {
@@ -48,7 +51,7 @@ func (category category) parentCategory() string {
 				if acc == "" {
 					acc += namePath
 				} else {
-					acc += "/" + namePath
+					acc += env.CategoryHierarchySeperator() + namePath
 				}
 				return acc
 			}).Val().(string)
@@ -61,6 +64,9 @@ func createCategory(newCategoryPath string, rootCategory string, existingCategor
 	newCategory := &category{
 		fullCategoryPath: newCategoryPath,
 		rootCategory:     rootCategory,
+	}
+	if newCategoryPath == "Reece AU website category////Outdoor|||c1526" {
+		log.Info("duplicate ")
 	}
 	parentCategoryPath := newCategory.parentCategory()
 	parentCategoryID := existingCategories[parentCategoryPath]
@@ -90,6 +96,21 @@ func createCategory(newCategoryPath string, rootCategory string, existingCategor
 	}
 }
 
+func (c categoryService) Delete(categoryName string) error {
+	categories, err := c.categoryClient.Categories(categoryName)
+	if err != nil {
+		return errors.ErrorWithStack(err)
+	}
+
+	for _, cat := range categories {
+		err := c.categoryClient.DeleteCategory(cat.Id)
+		if err != nil {
+			log.Error("Error in deleting the category", err)
+		}
+	}
+	return nil
+}
+
 func (c categoryService) Create(categoryName string, dataFeedPath string, configPath string) error {
 	categories, err := c.categoryClient.Categories(categoryName)
 	if err != nil {
@@ -116,8 +137,8 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 		if err != nil {
 			return errors.ErrorWithStack(err)
 		}
-		for _, category := range strings.Split(val, ",") {
-			newCategories = append(newCategories, categoryName+"/"+strings.TrimSpace(category))
+		for _, category := range strings.Split(val, env.MultipleCategoriesSeperator()) {
+			newCategories = append(newCategories, categoryName+env.CategoryHierarchySeperator()+strings.TrimSpace(category))
 		}
 
 	}
@@ -137,8 +158,14 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 			return !ok
 		}).RemoveDuplicates().Out().Val().([]string)
 
+	log.Info("calling ------")
+	for _, newCat := range newCategories {
+		log.Info(" new cat new cat :" + newCat)
+	}
+
 	err = koazee.StreamOf(newCategories).
 		ForEach(func(newCategoryPath string) error {
+			log.Info("newCategoryPath:" + newCategoryPath)
 			createdCategories, err := createCategory(newCategoryPath, categoryName, existingCategories, c.categoryClient)
 			if err != nil {
 				return errors.ErrorWithStack(err)
@@ -147,7 +174,7 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 				existingCategories[k] = v
 			}
 			return nil
-		}).Do().Out().Err().UserError()
+		}).Out().Err().UserError()
 	if err != nil {
 		return errors.ErrorWithStack(err)
 	}
