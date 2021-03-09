@@ -137,7 +137,7 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 		if err != nil {
 			return errors.ErrorWithStack(err)
 		}
-		for _, category := range strings.Split(val, env.MultipleCategoriesSeperator()) {
+		for _, category := range strings.Split(val, env.MultipleItemsSeperator()) {
 			newCategories = append(newCategories, categoryName+env.CategoryHierarchySeperator()+strings.TrimSpace(category))
 		}
 

@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 	"io/ioutil"
+	"strings"
 )
 
 type ContentType interface {
@@ -47,6 +48,8 @@ type SearchMapping struct {
 
 type ContentFieldMapping struct {
 	CsvProperty           string               `yaml:"csvProperty"`
+	Ignore                bool                 `yaml:"ignore"`
+	Mandatory             bool                 `yaml:"mandatory"`
 	AcousticProperty      string               `yaml:"acousticProperty"`
 	PropertyType          string               `yaml:"propertyType"`
 	CategoryName          string               `yaml:"categoryName"`
@@ -58,6 +61,11 @@ type ContentFieldMapping struct {
 	ImageWidth            uint                 `yaml:"imageWidth"`
 	ImageHeight           uint                 `yaml:"imageHeight"`
 	EnforceImageDimension bool                 `yaml:"enforceImageDimension"`
+	// configuration related to group
+	Type         string                `yaml:"type"`
+	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
+	// configuration related to category part
+	LinkToParents bool `yaml:"linkToParents"`
 }
 
 type RefPropertyMapping struct {
@@ -65,11 +73,66 @@ type RefPropertyMapping struct {
 	PropertyName   string `yaml:"propertyName"`
 }
 
-func (contentFieldMapping ContentFieldMapping) Value(value string) string {
-	if api.FieldType(contentFieldMapping.PropertyType) == api.Category {
-		return contentFieldMapping.CategoryName + env.CategoryHierarchySeperator() + value
-	} else {
-		return value
+func (contentFieldMapping ContentFieldMapping) ConvertToGenericData(dataRow DataRow, configTypeMapping *ContentTypeMapping) (api.GenericData, error) {
+	data := api.GenericData{}
+	data.Name = contentFieldMapping.AcousticProperty
+	data.Type = contentFieldMapping.PropertyType
+	data.Ignore = contentFieldMapping.Ignore
+	val, err := contentFieldMapping.Value(dataRow, configTypeMapping)
+	if err != nil {
+		return api.GenericData{}, errors.ErrorWithStack(err)
+	}
+	if val == nil && contentFieldMapping.Mandatory {
+		return api.GenericData{}, errors.ErrorMessageWithStack("empty value for mandatory field : " + contentFieldMapping.CsvProperty)
+	}
+	data.Value = val
+	context, err := contentFieldMapping.Context(dataRow, configTypeMapping)
+	if err != nil {
+		return api.GenericData{}, errors.ErrorWithStack(err)
+	}
+	data.Context = context
+	return data, nil
+}
+
+func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configTypeMapping *ContentTypeMapping) (interface{}, error) {
+	switch propType := api.FieldType(contentFieldMapping.PropertyType); propType {
+	case api.Category, api.CategoryPart:
+		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, nil
+		}
+		categoryItems := strings.Split(value, env.MultipleItemsSeperator())
+		catsWithRootCat := make([]string, 0, len(categoryItems))
+		for _, categoryItem := range categoryItems {
+			catsWithRootCat = append(catsWithRootCat, contentFieldMapping.CategoryName+env.CategoryHierarchySeperator()+categoryItem)
+		}
+		return strings.Join(catsWithRootCat, env.MultipleItemsSeperator()), nil
+	case api.Group:
+		group := api.AcousticGroup{}
+		group.Type = contentFieldMapping.Type
+		dataList := make([]api.GenericData, 0, len(contentFieldMapping.FieldMapping))
+		for _, fieldMapping := range contentFieldMapping.FieldMapping {
+			data, err := fieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			dataList = append(dataList, data)
+		}
+		group.Data = dataList
+		return group, nil
+	default:
+		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, nil
+		}
+		return value, nil
+
 	}
 }
 
@@ -98,7 +161,8 @@ func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[s
 }
 
 func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTypeMapping *ContentTypeMapping) (api.Context, error) {
-	if api.FieldType(contentFieldMapping.PropertyType) == api.Image {
+	switch fieldType := api.FieldType(contentFieldMapping.PropertyType); fieldType {
+	case api.Image:
 		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
 		if err != nil {
 			return api.Context{}, errors.ErrorWithStack(err)
@@ -114,7 +178,11 @@ func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTy
 			api.ImageWidth:            contentFieldMapping.ImageWidth,
 			api.ImageHeight:           contentFieldMapping.ImageHeight,
 		}}, nil
-	} else {
+	case api.CategoryPart:
+		return api.Context{Data: map[api.ContextKey]interface{}{
+			api.LinkToParents: contentFieldMapping.LinkToParents,
+		}}, nil
+	default:
 		return api.Context{}, nil
 	}
 }

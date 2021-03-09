@@ -7,24 +7,14 @@ import (
 )
 
 func convert(acousticField string, configTypeMapping *ContentTypeMapping, dataRow DataRow) (api.GenericData, error) {
-	data := api.GenericData{}
 	acousticFieldMapping, err := configTypeMapping.GetFieldMappingByAcousticField(acousticField)
-	if err != nil {
-		return data, errors.ErrorWithStack(err)
-	}
-	columnHeader := acousticFieldMapping.CsvProperty
-	data.Name = acousticFieldMapping.AcousticProperty
-	data.Type = acousticFieldMapping.PropertyType
-	value, err := dataRow.Get(columnHeader)
-	if err != nil {
-		return data, errors.ErrorWithStack(err)
-	}
-	data.Value = acousticFieldMapping.Value(value)
-	context, err := acousticFieldMapping.Context(dataRow, configTypeMapping)
 	if err != nil {
 		return api.GenericData{}, errors.ErrorWithStack(err)
 	}
-	data.Context = context
+	data, err := acousticFieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
+	if err != nil {
+		return data, errors.ErrorWithStack(err)
+	}
 	return data, nil
 }
 

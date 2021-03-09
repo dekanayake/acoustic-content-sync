@@ -54,8 +54,8 @@ func CategoryHierarchySeperator() string {
 	return GetOrPanic("CategoryHierarchySeperator")
 }
 
-func MultipleCategoriesSeperator() string {
-	return GetOrPanic("MultipleCategoriesSeperator")
+func MultipleItemsSeperator() string {
+	return GetOrPanic("MultipleItemsSeperator")
 }
 
 func LogErrorsToFile() bool {

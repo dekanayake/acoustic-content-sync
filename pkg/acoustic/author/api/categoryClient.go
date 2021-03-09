@@ -18,6 +18,7 @@ type Categories struct {
 
 type CategoryItem struct {
 	Id       string   `json:"id"`
+	Name     string   `json:"name"`
 	NamePath []string `json:"namePath"`
 }
 
@@ -100,7 +101,7 @@ func (categoryClient *categoryClient) Categories(categoryName string) ([]Categor
 	offSet := 0
 	for {
 		req := categoryClient.c.NewRequest().
-			SetResult(&Categories{}).SetQueryParam("offset", strconv.Itoa(offSet)).SetQueryParam("limit", "100")
+			SetResult(&Categories{}).SetQueryParam("offset", strconv.Itoa(offSet)).SetQueryParam("limit", "10000")
 		if resp, err := req.Get(categoryClient.acousticApiUrl + "/authoring/v2/categories"); err != nil {
 			return nil, errors.ErrorWithStack(err)
 		} else if resp.IsSuccess() {

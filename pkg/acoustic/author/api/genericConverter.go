@@ -28,8 +28,14 @@ type AcousticDataRecord struct {
 type GenericData struct {
 	Name    string
 	Type    string
-	Value   string
+	Ignore  bool
+	Value   interface{}
 	Context Context
+}
+
+type AcousticGroup struct {
+	Type string
+	Data []GenericData
 }
 
 type Context struct {
@@ -46,6 +52,7 @@ const (
 	EnforceImageDimension ContextKey = "EnforceImageDimension"
 	ImageHeight           ContextKey = "ImageHeight"
 	ImageWidth            ContextKey = "ImageWidth"
+	LinkToParents         ContextKey = "LinkToParents"
 )
 
 func (context Context) getValue(key ContextKey) (interface{}, error) {
@@ -61,10 +68,22 @@ func (context Context) getUintValue(key ContextKey) (uint, error) {
 		if castVal, ok := val.(uint); ok {
 			return castVal, nil
 		} else {
-			return 0, errors.ErrorMessageWithStack("Cannot cast the provided value" + reflect.TypeOf(val).String())
+			return 0, errors.ErrorMessageWithStack("Cannot cast the provided value " + reflect.TypeOf(val).String())
 		}
 	} else {
 		return 0, errors.ErrorMessageWithStack("no context value found for key :" + string(key))
+	}
+}
+
+func (context Context) getBoolValue(key ContextKey) (bool, error) {
+	if val, ok := context.Data[key]; ok {
+		if castVal, ok := val.(bool); ok {
+			return castVal, nil
+		} else {
+			return false, errors.ErrorMessageWithStack("Cannot cast the provided value " + reflect.TypeOf(val).String())
+		}
+	} else {
+		return false, errors.ErrorMessageWithStack("no context value found for key :" + string(key))
 	}
 }
 
@@ -81,9 +100,9 @@ func (acousticDataRecord AcousticDataRecord) Name() string {
 	return koazee.StreamOf(values).
 		Reduce(func(acc string, data GenericData) string {
 			if acc == "" {
-				acc += data.Value
+				acc += data.Value.(string)
 			} else {
-				acc += "__" + data.Value
+				acc += "__" + data.Value.(string)
 			}
 			return acc
 		}).String()
@@ -94,17 +113,22 @@ func (acousticDataRecord AcousticDataRecord) CSVRecordKeyValue() string {
 		Filter(func(columnValue GenericData) bool {
 			return columnValue.Name == acousticDataRecord.CSVRecordKey
 		}).Map(func(columnValue GenericData) string {
-		return columnValue.Value
+		return columnValue.Value.(string)
 	}).First().String()
 }
 
 func (element TextElement) Convert(data interface{}) (Element, error) {
-	element.Value = data.(GenericData).Value
+	element.Value = data.(GenericData).Value.(string)
+	return element, nil
+}
+
+func (element MultiTextElement) Convert(data interface{}) (Element, error) {
+	element.Values = strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
 	return element, nil
 }
 
 func (element NumberElement) Convert(data interface{}) (Element, error) {
-	numValue, err := strconv.ParseInt(data.(GenericData).Value, 0, 64)
+	numValue, err := strconv.ParseInt(data.(GenericData).Value.(string), 0, 64)
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
@@ -113,7 +137,7 @@ func (element NumberElement) Convert(data interface{}) (Element, error) {
 }
 
 func (element LinkElement) Convert(data interface{}) (Element, error) {
-	element.LinkURL = data.(GenericData).Value
+	element.LinkURL = data.(GenericData).Value.(string)
 	return element, nil
 }
 
@@ -123,7 +147,7 @@ func categoryIds(category string) ([]string, error) {
 		return nil, errors.ErrorMessageWithStack("empty category :" + catItems[0])
 	}
 
-	categoryItems, err := NewCategoryClient(env.AcousticAPIUrl()).Categories(catItems[0])
+	categoryItems, err := NewCachedCategoryClient(env.AcousticAPIUrl()).Categories(catItems[0])
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
@@ -159,10 +183,32 @@ func categoryIds(category string) ([]string, error) {
 	return catIds, nil
 }
 
+func catIdFromCatPart(catPart string, linkToParent bool) ([]string, error) {
+	catItems := strings.Split(catPart, env.CategoryHierarchySeperator())
+	if len(catItems) == 1 {
+		return nil, errors.ErrorMessageWithStack("empty category :" + catItems[0])
+	}
+	categoryItems, err := NewCachedCategoryClient(env.AcousticAPIUrl()).Categories(catItems[0])
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	for _, catItem := range categoryItems {
+		if strings.Contains(catItem.Name, catItems[1]) {
+			if linkToParent {
+				return categoryIds(catItem.FullNamePath())
+			} else {
+				return []string{catItem.Id}, nil
+			}
+		}
+	}
+	return nil, errors.ErrorMessageWithStack("no category matched with the given cat part :" + catPart)
+
+}
+
 func (element CategoryElement) Convert(data interface{}) (Element, error) {
-	cats := strings.Split(data.(GenericData).Value, ",")
+	cats := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
 	if len(cats) == 0 {
-		return nil, errors.ErrorMessageWithStack("No categories :" + data.(GenericData).Value)
+		return nil, errors.ErrorMessageWithStack("No categories :" + data.(GenericData).Value.(string))
 	}
 	categoryName := strings.Split(cats[0], env.CategoryHierarchySeperator())[0]
 	cats = koazee.StreamOf(cats).
@@ -187,6 +233,35 @@ func (element CategoryElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
+func (element CategoryPartElement) Convert(data interface{}) (Element, error) {
+	cats := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
+	linkToParents, err := data.(GenericData).Context.getBoolValue(LinkToParents)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	if len(cats) == 0 {
+		return nil, errors.ErrorMessageWithStack("No categories :" + data.(GenericData).Value.(string))
+	}
+	allCatIdsMap := make(map[string]bool)
+	for _, cat := range cats {
+		catIds, err := catIdFromCatPart(cat, linkToParents)
+		if err != nil {
+			return element, errors.ErrorWithStack(err)
+		}
+		for _, catId := range catIds {
+			if _, ok := allCatIdsMap[catId]; !ok {
+				allCatIdsMap[catId] = true
+			}
+		}
+	}
+	allCatIds := make([]string, 0, len(allCatIdsMap))
+	for key := range allCatIdsMap {
+		allCatIds = append(allCatIds, key)
+	}
+	element.CategoryIds = allCatIds
+	return element, nil
+}
+
 func getAssetName(values map[string]string) string {
 	assetName := ""
 	for _, v := range values {
@@ -204,7 +279,7 @@ func getLocalAssetFile(imgData GenericData) (*os.File, string, error) {
 	if err != nil {
 		return nil, "", errors.ErrorWithStack(err)
 	}
-	assetFullPath := assetLocation.(string) + "/" + imgData.Value
+	assetFullPath := assetLocation.(string) + "/" + imgData.Value.(string)
 	assetExtension := filepath.Ext(assetFullPath)
 	assetFile, err := os.Open(assetFullPath)
 	if err != nil {
@@ -214,27 +289,28 @@ func getLocalAssetFile(imgData GenericData) (*os.File, string, error) {
 	}
 }
 
-func getWebAssetFile(imgData GenericData) (*os.File, string, error) {
-	assetUrl := imgData.Value
+func getWebAssetFile(imgData GenericData) (string, string, error) {
+	assetUrl := imgData.Value.(string)
 	assetExtension := filepath.Ext(assetUrl)
 	response, err := http.Get(assetUrl)
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return nil, "", errors.ErrorMessageWithStack("Received non 200 response code")
+		return "", "", errors.ErrorMessageWithStack("Received non 200 response code")
 	}
 	file, err := ioutil.TempFile("", "acousticWebAsset")
 	if err != nil {
-		return nil, "", errors.ErrorWithStack(err)
+		return "", "", errors.ErrorWithStack(err)
 	}
+	defer file.Close()
 	_, err = io.Copy(file, response.Body)
 	if err != nil {
-		return nil, "", errors.ErrorWithStack(err)
+		return "", "", errors.ErrorWithStack(err)
 	}
 
-	return file, assetExtension, nil
+	return file.Name(), assetExtension, nil
 
 }
 
@@ -248,7 +324,12 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 	var assetFile *os.File
 	var assetExtension string
 	if isWebUrl.(bool) {
-		assetFile, assetExtension, err = getWebAssetFile(imgData)
+		assetFilePath, assetExt, err := getWebAssetFile(imgData)
+		assetExtension = assetExt
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		assetFile, err = os.Open(assetFilePath)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -312,6 +393,9 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 		return nil, errors.ErrorWithStack(err)
 	}
 	profileValues := profiles.([]string)
+	if profileValues == nil {
+		profileValues = []string{}
+	}
 	resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, tagsValue,
 		acousticAssetPath, env.ContentStatus(), profileValues, env.LibraryID())
 	if err != nil {
@@ -321,5 +405,33 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 		ID: resp.Id,
 	}
 	element.Mode = "shared"
+	return element, nil
+}
+
+func (element GroupElement) Convert(data interface{}) (Element, error) {
+	groupData := data.(GenericData)
+	groupValue := groupData.Value.(AcousticGroup)
+	element.TypeRef = map[string]string{
+		"id": groupValue.Type,
+	}
+	values := make(map[string]interface{}, len(groupValue.Data))
+	for _, dataItem := range groupValue.Data {
+		if dataItem.Ignore {
+			continue
+		}
+		if dataItem.Value == nil {
+			continue
+		}
+		element, err := Build(dataItem.Type)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		element, err = element.Convert(dataItem)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		values[dataItem.Name] = element
+	}
+	element.Value = values
 	return element, nil
 }

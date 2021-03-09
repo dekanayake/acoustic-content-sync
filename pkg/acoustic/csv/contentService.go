@@ -119,6 +119,12 @@ func createContent(record api.AcousticDataRecord, contentType string, contentCli
 	acousticContentLib string) (*api.ContentCreateResponse, error) {
 	acousticContentDataOut := koazee.StreamOf(record.Values).
 		Reduce(func(acc map[string]interface{}, columnData api.GenericData) (map[string]interface{}, error) {
+			if columnData.Ignore {
+				return acc, nil
+			}
+			if columnData.Value == nil {
+				return acc, nil
+			}
 			if acc == nil {
 				acc = make(map[string]interface{})
 			}
