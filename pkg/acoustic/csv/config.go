@@ -50,6 +50,7 @@ type ContentFieldMapping struct {
 	CsvProperty           string               `yaml:"csvProperty"`
 	Ignore                bool                 `yaml:"ignore"`
 	Mandatory             bool                 `yaml:"mandatory"`
+	StaticValue           string               `yaml:"staticValue"`
 	AcousticProperty      string               `yaml:"acousticProperty"`
 	PropertyType          string               `yaml:"propertyType"`
 	CategoryName          string               `yaml:"categoryName"`
@@ -94,10 +95,18 @@ func (contentFieldMapping ContentFieldMapping) ConvertToGenericData(dataRow Data
 	return data, nil
 }
 
+func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow DataRow) (string, error) {
+	if contentFieldMapping.StaticValue != "" {
+		return contentFieldMapping.StaticValue, nil
+	} else {
+		return dataRow.Get(contentFieldMapping.CsvProperty)
+	}
+}
+
 func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configTypeMapping *ContentTypeMapping) (interface{}, error) {
 	switch propType := api.FieldType(contentFieldMapping.PropertyType); propType {
 	case api.Category, api.CategoryPart:
-		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -124,7 +133,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		group.Data = dataList
 		return group, nil
 	default:
-		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}

@@ -122,6 +122,15 @@ func (element TextElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
+func (element BooleanElement) Convert(data interface{}) (Element, error) {
+	val, err := strconv.ParseBool(data.(GenericData).Value.(string))
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	element.Value = val
+	return element, nil
+}
+
 func (element MultiTextElement) Convert(data interface{}) (Element, error) {
 	element.Values = strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
 	return element, nil
