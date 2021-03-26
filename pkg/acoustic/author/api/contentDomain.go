@@ -14,24 +14,27 @@ const (
 type FieldType string
 
 const (
-	Text         FieldType = "text"
-	MultiText    FieldType = "multi-text"
-	Number       FieldType = "number"
-	Boolean      FieldType = "toggle"
-	Link         FieldType = "link"
-	Date         FieldType = "date"
-	Category     FieldType = "category"
-	CategoryPart FieldType = "category-part"
-	File         FieldType = "file"
-	Video        FieldType = "video"
-	Image        FieldType = "image"
-	Group        FieldType = "group"
+	Text          FieldType = "text"
+	MultiText     FieldType = "multi-text"
+	FormattedText FieldType = "formatted-text"
+	Number        FieldType = "number"
+	Boolean       FieldType = "toggle"
+	Link          FieldType = "link"
+	Date          FieldType = "date"
+	Category      FieldType = "category"
+	CategoryPart  FieldType = "category-part"
+	File          FieldType = "file"
+	Video         FieldType = "video"
+	Image         FieldType = "image"
+	Group         FieldType = "group"
 )
 
 func (ft FieldType) Convert() (AcousticFieldType, error) {
 	switch ft {
 	case Text, MultiText:
 		return AcousticFieldType(AcousticFieldText), nil
+	case FormattedText:
+		return AcousticFieldType(AcousticFieldFormattedText), nil
 	case Number:
 		return AcousticFieldType(AcousticFieldNumber), nil
 	case Boolean:
@@ -58,16 +61,17 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 type AcousticFieldType string
 
 const (
-	AcousticFieldText     FieldType = "text"
-	AcousticFieldNumber   FieldType = "number"
-	AcousticFieldBoolean  FieldType = "toggle"
-	AcousticFieldLink     FieldType = "link"
-	AcousticFieldDate     FieldType = "date"
-	AcousticFieldCategory FieldType = "category"
-	AcousticFieldFile     FieldType = "file"
-	AcousticFieldVideo    FieldType = "video"
-	AcousticFieldImage    FieldType = "image"
-	AcousticFieldGroup    FieldType = "group"
+	AcousticFieldText          FieldType = "text"
+	AcousticFieldFormattedText FieldType = "formattedtext"
+	AcousticFieldNumber        FieldType = "number"
+	AcousticFieldBoolean       FieldType = "toggle"
+	AcousticFieldLink          FieldType = "link"
+	AcousticFieldDate          FieldType = "date"
+	AcousticFieldCategory      FieldType = "category"
+	AcousticFieldFile          FieldType = "file"
+	AcousticFieldVideo         FieldType = "video"
+	AcousticFieldImage         FieldType = "image"
+	AcousticFieldGroup         FieldType = "group"
 )
 
 type Tags struct {
@@ -92,6 +96,11 @@ type element struct {
 }
 
 type TextElement struct {
+	Value string `json:"value"`
+	element
+}
+
+type FormattedTextElement struct {
 	Value string `json:"value"`
 	element
 }
@@ -196,6 +205,10 @@ func Build(fieldType string) (Element, error) {
 		return element, nil
 	case MultiText:
 		element := MultiTextElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case FormattedText:
+		element := FormattedTextElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	case Number:

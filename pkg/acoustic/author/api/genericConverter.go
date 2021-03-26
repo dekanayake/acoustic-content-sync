@@ -122,6 +122,11 @@ func (element TextElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
+func (element FormattedTextElement) Convert(data interface{}) (Element, error) {
+	element.Value = data.(GenericData).Value.(string)
+	return element, nil
+}
+
 func (element BooleanElement) Convert(data interface{}) (Element, error) {
 	val, err := strconv.ParseBool(data.(GenericData).Value.(string))
 	if err != nil {
