@@ -176,6 +176,76 @@ func badges(feedName string, configName string) {
 
 }
 
+func sliBanners(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("24f48506-0498-41f3-8701-43ab4a81b396", "Delete Sli banners", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+	//err = deleteService.Delete("24f48506-0498-41f3-8701-43ab4a81b396", "Delete Sli banner images", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "24f48506-0498-41f3-8701-43ab4a81b396")
+	status, err := contentService.Create("92423321-23ce-423e-bff2-74d39a99e449", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func brands(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("191c5ef1-9194-4326-bc4f-bc37d681685e", "Delete brands", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "191c5ef1-9194-4326-bc4f-bc37d681685e")
+	status, err := contentService.Create("9c4cef56-78fc-41d1-b959-d5ddb8f4fd9d", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func customSearch(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("191c5ef1-9194-4326-bc4f-bc37d681685e", "Delete brands", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "970266a6-c90c-4cc9-8bd6-e5867920e5ce")
+	status, err := contentService.Create("9c95a805-99a2-41a4-b423-0bdfa592cc53", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
 func createBrands() {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
@@ -207,11 +277,7 @@ func deleteCats() {
 }
 
 func main() {
-	//feedName := "ambulantAS14288.1.csv"
-	////feedName := "ambulantAS14288.1_strp_down.csv"
-	//configName := "config_ambulant_product_badges.yaml"
-	//badges(feedName,configName)
-	//deleteCats()
-	//createCats()
-	createBrands()
+	feedName := "ToolGuideSearchLists.csv"
+	configName := "tool_promo_search.yaml"
+	customSearch(feedName, configName)
 }
