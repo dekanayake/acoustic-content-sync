@@ -49,6 +49,7 @@ func tmpAssetFile(asset *os.File) (*os.File, error) {
 
 func (i imageService) IsImageInExpectedDimension(width uint, height uint, asset *os.File) (bool, error) {
 	mw := imagick.NewMagickWand()
+	defer mw.Destroy()
 	tmpImageAsset, err := tmpAssetFile(asset)
 	if err != nil {
 		return false, errors.WithStack(err)
@@ -65,6 +66,7 @@ func (i imageService) IsImageInExpectedDimension(width uint, height uint, asset 
 
 func (i imageService) Resize(width uint, height uint, asset *os.File) (*os.File, error) {
 	mw := imagick.NewMagickWand()
+	defer mw.Destroy()
 	tmpImageAsset, err := tmpAssetFile(asset)
 	if err != nil {
 		return nil, errors.WithStack(err)
