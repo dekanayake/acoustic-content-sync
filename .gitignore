@@ -1,2 +1,5 @@
 /reece_images/
 /.idea/
+*.yaml
+*.csv
+*.log
