@@ -27,6 +27,7 @@ const (
 	Video         FieldType = "video"
 	Image         FieldType = "image"
 	Group         FieldType = "group"
+	Reference     FieldType = "reference"
 )
 
 func (ft FieldType) Convert() (AcousticFieldType, error) {
@@ -53,6 +54,8 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 		return AcousticFieldType(AcousticFieldImage), nil
 	case Group:
 		return AcousticFieldType(AcousticFieldGroup), nil
+	case Reference:
+		return AcousticFieldType(AcousticFieldReference), nil
 	default:
 		return AcousticFieldType("no mapping"), errors.ErrorMessageWithStack("No Acoustic field type found for property type" + string(ft))
 	}
@@ -72,6 +75,7 @@ const (
 	AcousticFieldVideo         FieldType = "video"
 	AcousticFieldImage         FieldType = "image"
 	AcousticFieldGroup         FieldType = "group"
+	AcousticFieldReference     FieldType = "reference"
 )
 
 type Tags struct {
@@ -148,9 +152,22 @@ type ImageElement struct {
 	element
 }
 
+type FileElement struct {
+	Mode  string `json:"mode"`
+	Asset Asset  `json:"asset"`
+	element
+}
+
 type GroupElement struct {
 	TypeRef map[string]string      `json:"typeRef"`
 	Value   map[string]interface{} `json:"value"`
+	element
+}
+
+type ReferenceElement struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
 	element
 }
 
@@ -239,8 +256,16 @@ func Build(fieldType string) (Element, error) {
 		element := ImageElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
+	case File:
+		element := FileElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
 	case Group:
 		element := GroupElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case Reference:
+		element := ReferenceElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	default:

@@ -38,6 +38,24 @@ type AcousticGroup struct {
 	Data []GenericData
 }
 
+type AcousticReference struct {
+	Type               string
+	AlwaysNew          bool
+	Data               []GenericData
+	ReferenceSearchKey string
+	NameFields         []string
+	Tags               []string
+}
+
+type AcousticAsset struct {
+	AssetName             map[string]string
+	AcousticAssetBasePath string
+	AssetLocation         string
+	Tags                  []string
+	IsWebUrl              bool
+	Value                 string
+}
+
 type Context struct {
 	Data map[ContextKey]interface{}
 }
@@ -422,6 +440,47 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
+func (element FileElement) Convert(data interface{}) (Element, error) {
+	fileData := data.(GenericData)
+	fileValue := fileData.Value.(AcousticAsset)
+	var assetFile *os.File
+	var assetExtension string
+	var err error
+	if fileValue.IsWebUrl {
+		assetFilePath, assetExt, err := getWebAssetFile(fileData)
+		assetExtension = assetExt
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		assetFile, err = os.Open(assetFilePath)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		defer assetFile.Close()
+		defer os.Remove(assetFile.Name())
+	} else {
+		assetFile, assetExtension, err = getLocalAssetFile(fileData)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		defer assetFile.Close()
+	}
+
+	assetNameValue := getAssetName(fileValue.AssetName) + assetExtension
+
+	acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
+	resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
+		acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	element.Asset = Asset{
+		ID: resp.Id,
+	}
+	element.Mode = "shared"
+	return element, nil
+}
+
 func (element GroupElement) Convert(data interface{}) (Element, error) {
 	groupData := data.(GenericData)
 	groupValue := groupData.Value.(AcousticGroup)
@@ -447,5 +506,47 @@ func (element GroupElement) Convert(data interface{}) (Element, error) {
 		values[dataItem.Name] = element
 	}
 	element.Value = values
+	return element, nil
+}
+
+func (element ReferenceElement) Convert(data interface{}) (Element, error) {
+	referenceData := data.(GenericData)
+	referenceValue := referenceData.Value.(AcousticReference)
+	var contentRefId string = ""
+	var contentName string = ""
+	if !referenceValue.AlwaysNew {
+		acousticDataRecord := AcousticDataRecord{
+			Values:     referenceValue.Data,
+			NameFields: referenceValue.NameFields,
+			Tags:       referenceValue.Tags,
+		}
+		contentCreateResponse, err := NewContentService(env.AcousticAuthUrl(), env.LibraryID()).CreateContentWithRetry(acousticDataRecord, referenceValue.Type)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		contentRefId = contentCreateResponse.Id
+		contentName = contentCreateResponse.Name
+	} else {
+		searchRequest := SearchRequest{
+			ContentTypes: []string{referenceValue.Type},
+			CriteriaList: []FilterCriteria{
+				GenericFilterCriteria{
+					Field: "name",
+					Value: referenceValue.ReferenceSearchKey,
+				},
+			},
+		}
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), searchRequest, Pagination{Start: 0, Rows: 1})
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if !searchResponse.HasNext() {
+			return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type + " search query :" + referenceValue.ReferenceSearchKey)
+		}
+		contentRefId = searchResponse.Documents[0].Document.ID
+		contentName = searchResponse.Documents[0].Document.Name
+	}
+	element.ID = contentRefId
+	element.Name = contentName
 	return element, nil
 }

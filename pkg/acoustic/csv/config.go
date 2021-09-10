@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"encoding/json"
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
@@ -67,6 +68,12 @@ type ContentFieldMapping struct {
 	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
 	// configuration related to category part
 	LinkToParents bool `yaml:"linkToParents"`
+	// configuration related to reference
+	RefContentTypeMapping ContentTypeMapping `yaml:"refContentTypeMapping"`
+	AlwaysNew             bool               `yaml:"alwaysNew"`
+	// configuration related the column value in
+	ValueAsJSON bool   `yaml:"ValueAsJSON"`
+	JSONKey     string `yaml:"JSONKey"`
 }
 
 type RefPropertyMapping struct {
@@ -99,7 +106,17 @@ func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow 
 	if contentFieldMapping.StaticValue != "" {
 		return contentFieldMapping.StaticValue, nil
 	} else {
-		return dataRow.Get(contentFieldMapping.CsvProperty)
+		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+		if err != nil {
+			return "", err
+		}
+		if contentFieldMapping.ValueAsJSON {
+			var jsonValue map[string]string
+			json.Unmarshal([]byte(value), &jsonValue)
+			return jsonValue[contentFieldMapping.JSONKey], nil
+		} else {
+			return value, nil
+		}
 	}
 }
 
@@ -132,6 +149,53 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		}
 		group.Data = dataList
 		return group, nil
+	case api.File:
+		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
+		if err != nil {
+			return api.Context{}, errors.ErrorWithStack(err)
+		}
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, nil
+		}
+		asset := api.AcousticAsset{
+			AssetName:             assetName,
+			AcousticAssetBasePath: contentFieldMapping.AcousticAssetBasePath,
+			AssetLocation:         contentFieldMapping.AssetLocation,
+			Tags:                  append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...),
+			IsWebUrl:              contentFieldMapping.IsWebUrl,
+			Value:                 value,
+		}
+		return asset, nil
+	case api.Reference:
+		reference := api.AcousticReference{}
+		reference.Type = contentFieldMapping.RefContentTypeMapping.Type
+		reference.AlwaysNew = contentFieldMapping.AlwaysNew
+		reference.NameFields = contentFieldMapping.RefContentTypeMapping.Name
+		reference.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
+		if !contentFieldMapping.AlwaysNew {
+			value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			if value == "" {
+				return nil, nil
+			}
+			reference.ReferenceSearchKey = value
+		}
+		dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
+		for _, fieldMapping := range contentFieldMapping.FieldMapping {
+			data, err := fieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			dataList = append(dataList, data)
+		}
+		reference.Data = dataList
+		return reference, nil
 	default:
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
@@ -141,7 +205,6 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 			return nil, nil
 		}
 		return value, nil
-
 	}
 }
 

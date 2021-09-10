@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/csv"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/logrus"
@@ -17,8 +18,8 @@ var publishContent bool
 
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create acoustic content",
-	Long:  `Create acoustic content with assets`,
+	Short: "CreateBatch acoustic content",
+	Long:  `CreateBatch acoustic content with assets`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return errors.New("requires a content type argument")
@@ -30,7 +31,7 @@ var createCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Create aciustic content")
+		fmt.Println("CreateBatch aciustic content")
 	},
 }
 
@@ -62,8 +63,8 @@ func executeCreateCommand(cmd *cobra.Command, args []string) error {
 	feedLocation := getFlagStringValue(cmd, "DataCSVFileLocation")
 	configFileLocation := getFlagStringValue(cmd, "AcousticConfigLocation")
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "ff8c36e0-cc3d-48a0-8efe-9a4de800ce14")
-	status, err := contentService.Create(contentType, feedLocation, configFileLocation)
+	contentService := api.NewContentService(os.Getenv("AcousticAPIURL"), "ff8c36e0-cc3d-48a0-8efe-9a4de800ce14")
+	status, err := contentService.CreateBatch(contentType, feedLocation, configFileLocation)
 	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
 	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
 	if status.FailuresExist() {
