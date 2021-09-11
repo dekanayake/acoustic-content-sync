@@ -27,6 +27,7 @@ const (
 	Video         FieldType = "video"
 	Image         FieldType = "image"
 	Group         FieldType = "group"
+	MultiGroup    FieldType = "multi-group"
 	Reference     FieldType = "reference"
 )
 
@@ -52,7 +53,7 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 		return AcousticFieldType(AcousticFieldVideo), nil
 	case Image:
 		return AcousticFieldType(AcousticFieldImage), nil
-	case Group:
+	case Group, MultiGroup:
 		return AcousticFieldType(AcousticFieldGroup), nil
 	case Reference:
 		return AcousticFieldType(AcousticFieldReference), nil
@@ -153,8 +154,7 @@ type ImageElement struct {
 }
 
 type FileElement struct {
-	Mode  string `json:"mode"`
-	Asset Asset  `json:"asset"`
+	Asset Asset `json:"asset"`
 	element
 }
 
@@ -164,11 +164,19 @@ type GroupElement struct {
 	element
 }
 
-type ReferenceElement struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+type MultiGroupElement struct {
+	TypeRef map[string]string        `json:"typeRef"`
+	Values  []map[string]interface{} `json:"values"`
 	element
+}
+
+type ReferenceElement struct {
+	Value ReferenceValue `json:"value"`
+	element
+}
+
+type ReferenceValue struct {
+	ID string `json:"id"`
 }
 
 type Asset struct {
@@ -262,6 +270,10 @@ func Build(fieldType string) (Element, error) {
 		return element, nil
 	case Group:
 		element := GroupElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case MultiGroup:
+		element := MultiGroupElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	case Reference:

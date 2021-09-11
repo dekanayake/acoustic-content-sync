@@ -13,7 +13,7 @@ type AssetCreateRequest struct {
 	Name        string   `json:"name"`
 	Tags        Tags     `json:"tags"`
 	Status      string   `json:"status"`
-	Profiles    []string `json:"profiles"`
+	Profiles    []string `json:"profiles,omitempty"`
 	LibraryID   string   `json:"libraryId"`
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/goccy/go-yaml"
+	"github.com/jinzhu/copier"
 	log "github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 	"io/ioutil"
@@ -72,8 +73,12 @@ type ContentFieldMapping struct {
 	RefContentTypeMapping ContentTypeMapping `yaml:"refContentTypeMapping"`
 	AlwaysNew             bool               `yaml:"alwaysNew"`
 	// configuration related the column value in
-	ValueAsJSON bool   `yaml:"ValueAsJSON"`
+	ValueAsJSON bool   `yaml:"valueAsJSON"`
 	JSONKey     string `yaml:"JSONKey"`
+	SearchType  string `yaml:"searchType"`
+	// if json is list for multi groups or list of references
+	JSONListIndex   int
+	ValueAsJSONList bool
 }
 
 type RefPropertyMapping struct {
@@ -81,11 +86,28 @@ type RefPropertyMapping struct {
 	PropertyName   string `yaml:"propertyName"`
 }
 
+func (contentFieldMapping ContentFieldMapping) ToJSONListIndexableContentFieldMapping(jsonValueListIndex int) ContentFieldMapping {
+	clonedContentFieldMapping := contentFieldMapping.Clone()
+	clonedContentFieldMapping.JSONListIndex = jsonValueListIndex
+	clonedContentFieldMapping.ValueAsJSONList = true
+	return clonedContentFieldMapping
+}
+
+func (contentFieldMapping ContentFieldMapping) Clone() ContentFieldMapping {
+	clonedContentFieldMapping := ContentFieldMapping{}
+	copier.Copy(&clonedContentFieldMapping, &contentFieldMapping)
+	return clonedContentFieldMapping
+}
+
 func (contentFieldMapping ContentFieldMapping) ConvertToGenericData(dataRow DataRow, configTypeMapping *ContentTypeMapping) (api.GenericData, error) {
 	data := api.GenericData{}
 	data.Name = contentFieldMapping.AcousticProperty
 	data.Type = contentFieldMapping.PropertyType
 	data.Ignore = contentFieldMapping.Ignore
+	err := contentFieldMapping.Validate()
+	if err != nil {
+		return api.GenericData{}, errors.ErrorWithStack(err)
+	}
 	val, err := contentFieldMapping.Value(dataRow, configTypeMapping)
 	if err != nil {
 		return api.GenericData{}, errors.ErrorWithStack(err)
@@ -110,6 +132,13 @@ func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow 
 		if err != nil {
 			return "", err
 		}
+
+		if contentFieldMapping.ValueAsJSONList {
+			var jsonValue []map[string]string
+			json.Unmarshal([]byte(value), &jsonValue)
+			return jsonValue[contentFieldMapping.JSONListIndex][contentFieldMapping.JSONKey], nil
+		}
+
 		if contentFieldMapping.ValueAsJSON {
 			var jsonValue map[string]string
 			json.Unmarshal([]byte(value), &jsonValue)
@@ -118,6 +147,36 @@ func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow 
 			return value, nil
 		}
 	}
+}
+
+func (contentFieldMapping ContentFieldMapping) getJSONACSVColumnValue(dataRow DataRow) ([]map[string]string, error) {
+	value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+	if err != nil {
+		return nil, err
+	}
+	var jsonValue []map[string]string
+	json.Unmarshal([]byte(value), &jsonValue)
+	return jsonValue, nil
+}
+
+func (contentFieldMapping ContentFieldMapping) Validate() error {
+	switch propType := api.FieldType(contentFieldMapping.PropertyType); propType {
+	case api.MultiGroup:
+		if !contentFieldMapping.ValueAsJSON || contentFieldMapping.CsvProperty == "" {
+			return errors.ErrorMessageWithStack(string(api.MultiGroup + " should use in one single column as a array of json"))
+		}
+		fieldMappings := contentFieldMapping.FieldMapping
+		if len(fieldMappings) == 0 {
+			return errors.ErrorMessageWithStack(string(api.MultiGroup + " should have field mappings"))
+		}
+
+		for _, fieldMapping := range fieldMappings {
+			if fieldMapping.JSONKey == "" {
+				return errors.ErrorMessageWithStack(string(api.MultiGroup + " should have attached json key in each field mappings"))
+			}
+		}
+	}
+	return nil
 }
 
 func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configTypeMapping *ContentTypeMapping) (interface{}, error) {
@@ -149,10 +208,38 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		}
 		group.Data = dataList
 		return group, nil
+	case api.MultiGroup:
+		multiGroup := api.AcousticMultiGroup{}
+		multiGroup.Type = contentFieldMapping.Type
+		valueAsJson, err := contentFieldMapping.getJSONACSVColumnValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if valueAsJson == nil {
+			return nil, nil
+		}
+		group_data_list := make([][]api.GenericData, 0, len(valueAsJson))
+		for json_index, _ := range valueAsJson {
+			dataList := make([]api.GenericData, 0, len(contentFieldMapping.FieldMapping))
+			for _, fieldMapping := range contentFieldMapping.FieldMapping {
+				jSONListIndexableField := fieldMapping.ToJSONListIndexableContentFieldMapping(json_index)
+				jSONListIndexableField.ValueAsJSON = contentFieldMapping.ValueAsJSON
+				jSONListIndexableField.CsvProperty = contentFieldMapping.CsvProperty
+				data, err := jSONListIndexableField.ConvertToGenericData(dataRow, configTypeMapping)
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				dataList = append(dataList, data)
+			}
+			group_data_list = append(group_data_list, dataList)
+		}
+
+		multiGroup.Data = group_data_list
+		return multiGroup, nil
 	case api.File:
 		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
 		if err != nil {
-			return api.Context{}, errors.ErrorWithStack(err)
+			return nil, errors.ErrorWithStack(err)
 		}
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
@@ -161,21 +248,48 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		if value == "" {
 			return nil, nil
 		}
-		asset := api.AcousticAsset{
+		asset := api.AcousticFileAsset{
 			AssetName:             assetName,
 			AcousticAssetBasePath: contentFieldMapping.AcousticAssetBasePath,
 			AssetLocation:         contentFieldMapping.AssetLocation,
-			Tags:                  append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...),
+			Tags:                  configTypeMapping.Tags,
 			IsWebUrl:              contentFieldMapping.IsWebUrl,
 			Value:                 value,
 		}
 		return asset, nil
+	case api.Image:
+		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, nil
+		}
+		image := api.AcousticImageAsset{
+			Profiles:              contentFieldMapping.Profiles,
+			EnforceImageDimension: contentFieldMapping.EnforceImageDimension,
+			ImageHeight:           contentFieldMapping.ImageHeight,
+			ImageWidth:            contentFieldMapping.ImageWidth,
+		}
+		image.AssetName = assetName
+		image.AcousticAssetBasePath = contentFieldMapping.AcousticAssetBasePath
+		image.AssetLocation = contentFieldMapping.AssetLocation
+		image.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
+		image.IsWebUrl = contentFieldMapping.IsWebUrl
+		image.Value = value
+		return image, nil
 	case api.Reference:
 		reference := api.AcousticReference{}
 		reference.Type = contentFieldMapping.RefContentTypeMapping.Type
 		reference.AlwaysNew = contentFieldMapping.AlwaysNew
 		reference.NameFields = contentFieldMapping.RefContentTypeMapping.Name
 		reference.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
+		reference.SearchType = contentFieldMapping.SearchType
+
 		if !contentFieldMapping.AlwaysNew {
 			value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 			if err != nil {
@@ -185,16 +299,17 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 				return nil, nil
 			}
 			reference.ReferenceSearchKey = value
-		}
-		dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
-		for _, fieldMapping := range contentFieldMapping.FieldMapping {
-			data, err := fieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
+		} else {
+			dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
+			for _, fieldMapping := range contentFieldMapping.FieldMapping {
+				data, err := fieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				dataList = append(dataList, data)
 			}
-			dataList = append(dataList, data)
+			reference.Data = dataList
 		}
-		reference.Data = dataList
 		return reference, nil
 	default:
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
@@ -234,22 +349,6 @@ func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[s
 
 func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTypeMapping *ContentTypeMapping) (api.Context, error) {
 	switch fieldType := api.FieldType(contentFieldMapping.PropertyType); fieldType {
-	case api.Image:
-		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
-		if err != nil {
-			return api.Context{}, errors.ErrorWithStack(err)
-		}
-		return api.Context{Data: map[api.ContextKey]interface{}{
-			api.AssetName:             assetName,
-			api.Profiles:              contentFieldMapping.Profiles,
-			api.AcousticAssetBasePath: contentFieldMapping.AcousticAssetBasePath,
-			api.AssetLocation:         contentFieldMapping.AssetLocation,
-			api.TagList:               configTypeMapping.Tags,
-			api.IsWebUrl:              contentFieldMapping.IsWebUrl,
-			api.EnforceImageDimension: contentFieldMapping.EnforceImageDimension,
-			api.ImageWidth:            contentFieldMapping.ImageWidth,
-			api.ImageHeight:           contentFieldMapping.ImageHeight,
-		}}, nil
 	case api.CategoryPart:
 		return api.Context{Data: map[api.ContextKey]interface{}{
 			api.LinkToParents: contentFieldMapping.LinkToParents,

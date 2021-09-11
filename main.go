@@ -71,8 +71,42 @@ func init() {
 func threed_materials(feedName string, configName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
+
+	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials", configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+	err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials glb", configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
 	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
 	status, err := contentService.CreateBatch("07198b81-3dc0-4131-9f4c-17f3d1640049", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func threed_materials_configuration(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	status, err := contentService.CreateBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
 	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
 	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
 	if status.FailuresExist() {
@@ -310,8 +344,14 @@ func threed_materials(feedName string, configName string) {
 //}
 
 func main() {
-	feedName := "210906_Metadata_materials.csv"
-	configName := "config_3d_product_material.yaml"
+	//feedName := "210906_Metadata_materials.csv"
+	//configName := "config_3d_product_material.yaml"
+	////delete_reece(configName)
+	//threed_materials(feedName, configName)
+
+	feedName := "210906_Metadata_acoustic.csv"
+	configName := "config_3d_product_configurator.yaml"
 	//delete_reece(configName)
-	threed_materials(feedName, configName)
+	threed_materials_configuration(feedName, configName)
+
 }

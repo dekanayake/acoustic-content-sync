@@ -38,7 +38,13 @@ type AcousticGroup struct {
 	Data []GenericData
 }
 
+type AcousticMultiGroup struct {
+	Type string
+	Data [][]GenericData
+}
+
 type AcousticReference struct {
+	SearchType         string
 	Type               string
 	AlwaysNew          bool
 	Data               []GenericData
@@ -47,7 +53,7 @@ type AcousticReference struct {
 	Tags               []string
 }
 
-type AcousticAsset struct {
+type AcousticFileAsset struct {
 	AssetName             map[string]string
 	AcousticAssetBasePath string
 	AssetLocation         string
@@ -56,21 +62,31 @@ type AcousticAsset struct {
 	Value                 string
 }
 
+type AcousticImageAsset struct {
+	Profiles              []string
+	EnforceImageDimension bool
+	ImageWidth            uint
+	ImageHeight           uint
+	AcousticFileAsset
+}
+
+func (acousticImageAsset AcousticImageAsset) GetFileAsset() AcousticFileAsset {
+	return AcousticFileAsset{
+		AssetName:             acousticImageAsset.AssetName,
+		Tags:                  acousticImageAsset.Tags,
+		Value:                 acousticImageAsset.Value,
+		AcousticAssetBasePath: acousticImageAsset.AcousticAssetBasePath,
+		IsWebUrl:              acousticImageAsset.IsWebUrl,
+		AssetLocation:         acousticImageAsset.AssetLocation,
+	}
+}
+
 type Context struct {
 	Data map[ContextKey]interface{}
 }
 
 const (
-	AssetName             ContextKey = "AssetName"
-	Profiles              ContextKey = "Profiles"
-	AcousticAssetBasePath ContextKey = "AcousticAssetBasePath"
-	AssetLocation         ContextKey = "AssetLocation"
-	TagList               ContextKey = "Tags"
-	IsWebUrl              ContextKey = "IsWebUrl"
-	EnforceImageDimension ContextKey = "EnforceImageDimension"
-	ImageHeight           ContextKey = "ImageHeight"
-	ImageWidth            ContextKey = "ImageWidth"
-	LinkToParents         ContextKey = "LinkToParents"
+	LinkToParents ContextKey = "LinkToParents"
 )
 
 func (context Context) getValue(key ContextKey) (interface{}, error) {
@@ -305,13 +321,9 @@ func getAssetName(values map[string]string) string {
 	return assetName
 }
 
-func getLocalAssetFile(imgData GenericData) (*os.File, string, error) {
-	imgDataContext := imgData.Context
-	assetLocation, err := imgDataContext.getValue(AssetLocation)
-	if err != nil {
-		return nil, "", errors.ErrorWithStack(err)
-	}
-	assetFullPath := assetLocation.(string) + "/" + imgData.Value.(string)
+func getLocalAssetFile(imgData AcousticFileAsset) (*os.File, string, error) {
+
+	assetFullPath := imgData.AssetLocation + "/" + imgData.Value
 	assetExtension := filepath.Ext(assetFullPath)
 	assetFile, err := os.Open(assetFullPath)
 	if err != nil {
@@ -348,14 +360,11 @@ func getWebAssetFile(imgData GenericData) (string, string, error) {
 
 func (element ImageElement) Convert(data interface{}) (Element, error) {
 	imgData := data.(GenericData)
-	imgDataContext := imgData.Context
-	isWebUrl, err := imgDataContext.getValue(IsWebUrl)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
+	imageValue := imgData.Value.(AcousticImageAsset)
 	var assetFile *os.File
 	var assetExtension string
-	if isWebUrl.(bool) {
+	var err error
+	if imageValue.IsWebUrl {
 		assetFilePath, assetExt, err := getWebAssetFile(imgData)
 		assetExtension = assetExt
 		if err != nil {
@@ -368,31 +377,20 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 		defer assetFile.Close()
 		defer os.Remove(assetFile.Name())
 	} else {
-		assetFile, assetExtension, err = getLocalAssetFile(imgData)
+		assetFile, assetExtension, err = getLocalAssetFile(imageValue.GetFileAsset())
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
 		defer assetFile.Close()
 	}
-	enforceImageDimension, err := imgDataContext.getValue(EnforceImageDimension)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
-	if enforceImageDimension.(bool) {
-		imageWidth, err := imgDataContext.getUintValue(ImageWidth)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		imageHeight, err := imgDataContext.getUintValue(ImageHeight)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		ok, err := image.GetImageService().IsImageInExpectedDimension(imageWidth, imageHeight, assetFile)
+
+	if imageValue.EnforceImageDimension {
+		ok, err := image.GetImageService().IsImageInExpectedDimension(imageValue.ImageWidth, imageValue.ImageHeight, assetFile)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
 		if !ok {
-			resizedAsset, err := image.GetImageService().Resize(imageWidth, imageHeight, assetFile)
+			resizedAsset, err := image.GetImageService().Resize(imageValue.ImageWidth, imageValue.ImageHeight, assetFile)
 			if err != nil {
 				return nil, errors.ErrorWithStack(err)
 			}
@@ -405,30 +403,14 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
-	assetName, err := imgDataContext.getValue(AssetName)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
-	assetNameValue := getAssetName(assetName.(map[string]string)) + assetExtension
-	tags, err := imgDataContext.getValue(TagList)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
-	tagsValue := tags.([]string)
-	acousticAssetBasePath, err := imgDataContext.getValue(AcousticAssetBasePath)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
-	acousticAssetPath := acousticAssetBasePath.(string) + "/" + assetNameValue
-	profiles, err := imgDataContext.getValue(Profiles)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
-	profileValues := profiles.([]string)
+
+	assetNameValue := getAssetName(imageValue.AssetName) + assetExtension
+	acousticAssetPath := imageValue.AcousticAssetBasePath + "/" + assetNameValue
+	profileValues := imageValue.Profiles
 	if profileValues == nil {
 		profileValues = []string{}
 	}
-	resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, tagsValue,
+	resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, imageValue.Tags,
 		acousticAssetPath, env.ContentStatus(), profileValues, env.LibraryID())
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
@@ -442,7 +424,7 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 
 func (element FileElement) Convert(data interface{}) (Element, error) {
 	fileData := data.(GenericData)
-	fileValue := fileData.Value.(AcousticAsset)
+	fileValue := fileData.Value.(AcousticFileAsset)
 	var assetFile *os.File
 	var assetExtension string
 	var err error
@@ -459,7 +441,7 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 		defer assetFile.Close()
 		defer os.Remove(assetFile.Name())
 	} else {
-		assetFile, assetExtension, err = getLocalAssetFile(fileData)
+		assetFile, assetExtension, err = getLocalAssetFile(fileValue)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -477,7 +459,6 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 	element.Asset = Asset{
 		ID: resp.Id,
 	}
-	element.Mode = "shared"
 	return element, nil
 }
 
@@ -509,12 +490,43 @@ func (element GroupElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
+func (element MultiGroupElement) Convert(data interface{}) (Element, error) {
+	groupData := data.(GenericData)
+	groupValue := groupData.Value.(AcousticMultiGroup)
+	element.TypeRef = map[string]string{
+		"id": groupValue.Type,
+	}
+	groupValues := make([]map[string]interface{}, 0, len(groupValue.Data))
+	for _, dataItemGroup := range groupValue.Data {
+		values := make(map[string]interface{}, len(dataItemGroup))
+		for _, dataItem := range dataItemGroup {
+			if dataItem.Ignore {
+				continue
+			}
+			if dataItem.Value == nil {
+				continue
+			}
+			element, err := Build(dataItem.Type)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			element, err = element.Convert(dataItem)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			values[dataItem.Name] = element
+		}
+		groupValues = append(groupValues, values)
+	}
+	element.Values = groupValues
+	return element, nil
+}
+
 func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 	referenceData := data.(GenericData)
 	referenceValue := referenceData.Value.(AcousticReference)
-	var contentRefId string = ""
-	var contentName string = ""
-	if !referenceValue.AlwaysNew {
+	value := ReferenceValue{}
+	if referenceValue.AlwaysNew {
 		acousticDataRecord := AcousticDataRecord{
 			Values:     referenceValue.Data,
 			NameFields: referenceValue.NameFields,
@@ -524,29 +536,23 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
-		contentRefId = contentCreateResponse.Id
-		contentName = contentCreateResponse.Name
+		value.ID = contentCreateResponse.Id
 	} else {
 		searchRequest := SearchRequest{
-			ContentTypes: []string{referenceValue.Type},
-			CriteriaList: []FilterCriteria{
-				GenericFilterCriteria{
-					Field: "name",
-					Value: referenceValue.ReferenceSearchKey,
-				},
-			},
+			Term:           "name:(" + referenceValue.ReferenceSearchKey + ")",
+			ContentTypes:   []string{referenceValue.SearchType},
+			Classification: "content",
 		}
 		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
-		if !searchResponse.HasNext() {
+		if searchResponse.Count == 0 {
 			return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type + " search query :" + referenceValue.ReferenceSearchKey)
 		}
-		contentRefId = searchResponse.Documents[0].Document.ID
-		contentName = searchResponse.Documents[0].Document.Name
+		value.ID = searchResponse.Documents[0].Document.ID
 	}
-	element.ID = contentRefId
-	element.Name = contentName
+
+	element.Value = value
 	return element, nil
 }
