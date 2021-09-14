@@ -1,6 +1,8 @@
 package api
 
-import "github.com/dekanayake/acoustic-content-sync/pkg/errors"
+import (
+	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+)
 
 type AssetType string
 
@@ -14,21 +16,22 @@ const (
 type FieldType string
 
 const (
-	Text          FieldType = "text"
-	MultiText     FieldType = "multi-text"
-	FormattedText FieldType = "formatted-text"
-	Number        FieldType = "number"
-	Boolean       FieldType = "toggle"
-	Link          FieldType = "link"
-	Date          FieldType = "date"
-	Category      FieldType = "category"
-	CategoryPart  FieldType = "category-part"
-	File          FieldType = "file"
-	Video         FieldType = "video"
-	Image         FieldType = "image"
-	Group         FieldType = "group"
-	MultiGroup    FieldType = "multi-group"
-	Reference     FieldType = "reference"
+	Text           FieldType = "text"
+	MultiText      FieldType = "multi-text"
+	FormattedText  FieldType = "formatted-text"
+	Number         FieldType = "number"
+	Boolean        FieldType = "toggle"
+	Link           FieldType = "link"
+	Date           FieldType = "date"
+	Category       FieldType = "category"
+	CategoryPart   FieldType = "category-part"
+	File           FieldType = "file"
+	Video          FieldType = "video"
+	Image          FieldType = "image"
+	Group          FieldType = "group"
+	MultiGroup     FieldType = "multi-group"
+	Reference      FieldType = "reference"
+	MultiReference FieldType = "multi-reference"
 )
 
 func (ft FieldType) Convert() (AcousticFieldType, error) {
@@ -55,7 +58,7 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 		return AcousticFieldType(AcousticFieldImage), nil
 	case Group, MultiGroup:
 		return AcousticFieldType(AcousticFieldGroup), nil
-	case Reference:
+	case Reference, MultiReference:
 		return AcousticFieldType(AcousticFieldReference), nil
 	default:
 		return AcousticFieldType("no mapping"), errors.ErrorMessageWithStack("No Acoustic field type found for property type" + string(ft))
@@ -84,6 +87,8 @@ type Tags struct {
 }
 
 type Content struct {
+	ID        string                 `json:"id,omitempty"`
+	REV       string                 `json:"rev,omitempty"`
 	Name      string                 `json:"name"`
 	TypeId    string                 `json:"typeId"`
 	Status    string                 `json:"status"`
@@ -94,6 +99,7 @@ type Content struct {
 
 type Element interface {
 	Convert(data interface{}) (Element, error)
+	Update(new Element) (Element, error)
 }
 
 type element struct {
@@ -175,6 +181,11 @@ type ReferenceElement struct {
 	element
 }
 
+type MultiReferenceElement struct {
+	Values []ReferenceValue `json:"values"`
+	element
+}
+
 type ReferenceValue struct {
 	ID string `json:"id"`
 }
@@ -183,7 +194,15 @@ type Asset struct {
 	ID string `json:"id"`
 }
 
-type ContentCreateResponse struct {
+type ContentAutheringResponse struct {
+	Id     string `json:"id"`
+	Rev    string `json:"rev"`
+	Name   string `json:"name"`
+	TypeId string `json:"typeId"`
+	Type   string `json:"type"`
+}
+
+type ContentUpdateResponse struct {
 	Id     string `json:"id"`
 	Rev    string `json:"rev"`
 	Name   string `json:"name"`
@@ -278,6 +297,10 @@ func Build(fieldType string) (Element, error) {
 		return element, nil
 	case Reference:
 		element := ReferenceElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case MultiReference:
+		element := MultiReferenceElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	default:

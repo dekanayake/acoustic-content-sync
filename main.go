@@ -99,14 +99,37 @@ func threed_materials_configuration(feedName string, configName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
 
+	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	status, err := contentService.CreateBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func custom_search(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	//
 	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
 	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
 	//if err != nil {
 	//	errorHandling.WithError(err).Panic(err)
 	//}
 
-	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
-	status, err := contentService.CreateBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "970266a6-c90c-4cc9-8bd6-e5867920e5ce")
+	status, err := contentService.CreateBatch("945ba2f8-5393-41f3-8504-7ea6e5086ed8", feedName, configName)
 	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
 	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
 	if status.FailuresExist() {
@@ -349,9 +372,14 @@ func main() {
 	////delete_reece(configName)
 	//threed_materials(feedName, configName)
 
-	feedName := "210906_Metadata_acoustic.csv"
-	configName := "config_3d_product_configurator.yaml"
+	//feedName := "210906_Metadata_acoustic.csv"
+	//configName := "config_3d_product_configurator.yaml"
+	////delete_reece(configName)
+	//threed_materials_configuration(feedName, configName)
+
+	feedName := "TheBlock13Sep.csv"
+	configName := "config_search_config.yaml"
 	//delete_reece(configName)
-	threed_materials_configuration(feedName, configName)
+	custom_search(feedName, configName)
 
 }

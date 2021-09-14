@@ -99,7 +99,7 @@ func (contentUseCase *contentUseCase) CreateBatch(contentType string, dataFeedPa
 	success := make([]ContentCreationSuccessStatus, 0)
 	koazee.StreamOf(records).
 		ForEach(func(record api.AcousticDataRecord) {
-			response, err := contentUseCase.contentService.CreateContentWithRetry(record, contentType)
+			response, err := contentUseCase.contentService.CreateOrUpdateContentWithRetry(record, contentType)
 			if err != nil {
 				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Error("Failed in creating  the content ")
 				failed = append(failed, ContentCreationFailedStatus{

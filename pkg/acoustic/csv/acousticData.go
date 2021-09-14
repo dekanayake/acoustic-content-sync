@@ -45,10 +45,25 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 			return nil, errors.ErrorWithStack(err)
 		}
 		acousticData := acousticDataOut.Val().([]api.GenericData)
+
+		searchValues := make(map[string]string)
+		for _, searchKey := range configTypeMapping.SearchKeys {
+			for _, acousticDataItem := range acousticData {
+				if acousticDataItem.Name == searchKey {
+					searchValues[searchKey] = acousticDataItem.Value.(string)
+				}
+			}
+		}
+
 		acousticDataList = append(acousticDataList, api.AcousticDataRecord{
 			Values:       acousticData,
 			NameFields:   configTypeMapping.Name,
 			Tags:         configTypeMapping.Tags,
+			Update:       configTypeMapping.Update,
+			SearchTerm:   configTypeMapping.SearchTerm,
+			SearchValues: searchValues,
+			SearchKeys:   configTypeMapping.SearchKeys,
+			SearchType:   configTypeMapping.SearchType,
 			CSVRecordKey: configTypeMapping.CsvRecordKey,
 		})
 	}

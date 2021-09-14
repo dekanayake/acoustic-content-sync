@@ -7,7 +7,9 @@ import (
 )
 
 type ContentClient interface {
-	Create(content Content) (*ContentCreateResponse, error)
+	Get(id string) (*Content, error)
+	Create(content Content) (*ContentAutheringResponse, error)
+	Update(content Content) (*ContentAutheringResponse, error)
 	Delete(id string) error
 }
 
@@ -39,15 +41,15 @@ func (contentClient contentClient) Delete(id string) error {
 	}
 }
 
-func (contentClient *contentClient) Create(content Content) (*ContentCreateResponse, error) {
+func (contentClient *contentClient) Create(content Content) (*ContentAutheringResponse, error) {
 	req := contentClient.c.NewRequest().SetBody(content).
-		SetResult(&ContentCreateResponse{}).
+		SetResult(&ContentAutheringResponse{}).
 		SetError(&ContentAuthoringErrorResponse{})
 
 	if resp, err := req.Post(contentClient.acousticApiUrl + "/authoring/v1/content"); err != nil {
 		return nil, errors.ErrorWithStack(err)
 	} else if resp.IsSuccess() {
-		return resp.Result().(*ContentCreateResponse), nil
+		return resp.Result().(*ContentAutheringResponse), nil
 	} else if resp.IsError() && resp.StatusCode() == 400 {
 		error := resp.Error().(*ContentAuthoringErrorResponse)
 		errorString, _ := json.MarshalIndent(error, "", "\t")
@@ -56,5 +58,45 @@ func (contentClient *contentClient) Create(content Content) (*ContentCreateRespo
 		error := resp.Error().(*ContentAuthoringErrorResponse)
 		errorString, _ := json.MarshalIndent(error, "", "\t")
 		return nil, errors.ErrorMessageWithStack("error in creating content : " + resp.Status() + "  " + string(errorString))
+	}
+}
+
+func (contentClient contentClient) Get(id string) (*Content, error) {
+	req := contentClient.c.NewRequest().
+		SetResult(&Content{}).
+		SetError(&ContentAuthoringErrorResponse{})
+
+	if resp, err := req.Get(contentClient.acousticApiUrl + "/authoring/v1/content/" + id); err != nil {
+		return nil, errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return resp.Result().(*Content), nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in getting content : " + resp.Status() + "  " + string(errorString))
+	} else {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in getting content : " + resp.Status() + "  " + string(errorString))
+	}
+}
+
+func (contentClient contentClient) Update(content Content) (*ContentAutheringResponse, error) {
+	req := contentClient.c.NewRequest().SetBody(content).
+		SetResult(&ContentAutheringResponse{}).
+		SetError(&ContentAuthoringErrorResponse{})
+
+	if resp, err := req.Put(contentClient.acousticApiUrl + "/authoring/v1/content/" + content.ID); err != nil {
+		return nil, errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return resp.Result().(*ContentAutheringResponse), nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in updating content : " + resp.Status() + "  " + string(errorString))
+	} else {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in updating content : " + resp.Status() + "  " + string(errorString))
 	}
 }

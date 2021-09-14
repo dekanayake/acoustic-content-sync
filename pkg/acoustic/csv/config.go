@@ -29,6 +29,10 @@ type ContentTypeMapping struct {
 	Name         []string              `yaml:"name"`
 	Tags         []string              `yaml:"tags"`
 	CsvRecordKey string                `yaml:"csvRecordKey"`
+	Update       bool                  `yaml:"update"`
+	SearchTerm   string                `yaml:"searchTerm"`
+	SearchKeys   []string              `yaml:"searchKeys"`
+	SearchType   string                `yaml:"searchType"`
 }
 
 type CategoryMapping struct {
@@ -51,6 +55,7 @@ type SearchMapping struct {
 type ContentFieldMapping struct {
 	CsvProperty           string               `yaml:"csvProperty"`
 	Ignore                bool                 `yaml:"ignore"`
+	ValuePattern          string               `yaml:"valuePattern"`
 	Mandatory             bool                 `yaml:"mandatory"`
 	StaticValue           string               `yaml:"staticValue"`
 	AcousticProperty      string               `yaml:"acousticProperty"`
@@ -72,6 +77,8 @@ type ContentFieldMapping struct {
 	// configuration related to reference
 	RefContentTypeMapping ContentTypeMapping `yaml:"refContentTypeMapping"`
 	AlwaysNew             bool               `yaml:"alwaysNew"`
+	SearchTerm            string             `yaml:"searchTerm"`
+	SearchKeys            []string           `yaml:"searchKeys"`
 	// configuration related the column value in
 	ValueAsJSON bool   `yaml:"valueAsJSON"`
 	JSONKey     string `yaml:"JSONKey"`
@@ -282,7 +289,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		image.IsWebUrl = contentFieldMapping.IsWebUrl
 		image.Value = value
 		return image, nil
-	case api.Reference:
+	case api.Reference, api.MultiReference:
 		reference := api.AcousticReference{}
 		reference.Type = contentFieldMapping.RefContentTypeMapping.Type
 		reference.AlwaysNew = contentFieldMapping.AlwaysNew
@@ -298,7 +305,11 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 			if value == "" {
 				return nil, nil
 			}
-			reference.ReferenceSearchKey = value
+			reference.SearchValues = make([]string, 0)
+			for _, _ = range contentFieldMapping.SearchKeys {
+				reference.SearchValues = append(reference.SearchValues, value)
+			}
+			reference.SearchTerm = contentFieldMapping.SearchTerm
 		} else {
 			dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
 			for _, fieldMapping := range contentFieldMapping.FieldMapping {

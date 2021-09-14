@@ -2,6 +2,7 @@ package api
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/dekanayake/acoustic-content-sync/pkg/image"
@@ -20,6 +21,11 @@ type ContextKey string
 
 type AcousticDataRecord struct {
 	CSVRecordKey string
+	Update       bool
+	SearchTerm   string
+	SearchValues map[string]string
+	SearchKeys   []string
+	SearchType   string
 	NameFields   []string
 	Values       []GenericData
 	Tags         []string
@@ -44,13 +50,14 @@ type AcousticMultiGroup struct {
 }
 
 type AcousticReference struct {
-	SearchType         string
-	Type               string
-	AlwaysNew          bool
-	Data               []GenericData
-	ReferenceSearchKey string
-	NameFields         []string
-	Tags               []string
+	SearchType   string
+	Type         string
+	AlwaysNew    bool
+	Data         []GenericData
+	SearchTerm   string
+	SearchValues []string
+	NameFields   []string
+	Tags         []string
 }
 
 type AcousticFileAsset struct {
@@ -68,6 +75,14 @@ type AcousticImageAsset struct {
 	ImageWidth            uint
 	ImageHeight           uint
 	AcousticFileAsset
+}
+
+func (accusticReference AcousticReference) searchQuery() (string, error) {
+	values := make([]interface{}, 0)
+	for _, searchValue := range accusticReference.SearchValues {
+		values = append(values, searchValue)
+	}
+	return fmt.Sprintf(accusticReference.SearchTerm, values...), nil
 }
 
 func (acousticImageAsset AcousticImageAsset) GetFileAsset() AcousticFileAsset {
@@ -149,6 +164,18 @@ func (acousticDataRecord AcousticDataRecord) CSVRecordKeyValue() string {
 		}).Map(func(columnValue GenericData) string {
 		return columnValue.Value.(string)
 	}).First().String()
+}
+
+func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate() (string, error) {
+	if !acousticDataRecord.Update {
+		errors.ErrorMessageWithStack("Search term is available only for updatable contents")
+	}
+	searchValuesMap := acousticDataRecord.SearchValues
+	searchValues := make([]interface{}, 0)
+	for _, searchKey := range acousticDataRecord.SearchKeys {
+		searchValues = append(searchValues, searchValuesMap[searchKey])
+	}
+	return fmt.Sprintf(acousticDataRecord.SearchTerm, searchValues...), nil
 }
 
 func (element TextElement) Convert(data interface{}) (Element, error) {
@@ -532,14 +559,18 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 			NameFields: referenceValue.NameFields,
 			Tags:       referenceValue.Tags,
 		}
-		contentCreateResponse, err := NewContentService(env.AcousticAuthUrl(), env.LibraryID()).CreateContentWithRetry(acousticDataRecord, referenceValue.Type)
+		contentCreateResponse, err := NewContentService(env.AcousticAuthUrl(), env.LibraryID()).CreateOrUpdateContentWithRetry(acousticDataRecord, referenceValue.Type)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
 		value.ID = contentCreateResponse.Id
 	} else {
+		query, err := referenceValue.searchQuery()
+		if err != nil {
+			return nil, err
+		}
 		searchRequest := SearchRequest{
-			Term:           "name:(" + referenceValue.ReferenceSearchKey + ")",
+			Term:           query,
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
@@ -548,11 +579,51 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 			return nil, errors.ErrorWithStack(err)
 		}
 		if searchResponse.Count == 0 {
-			return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type + " search query :" + referenceValue.ReferenceSearchKey)
+			return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type)
 		}
 		value.ID = searchResponse.Documents[0].Document.ID
 	}
 
 	element.Value = value
+	return element, nil
+}
+
+func (element MultiReferenceElement) Convert(data interface{}) (Element, error) {
+	referenceData := data.(GenericData)
+	referenceValue := referenceData.Value.(AcousticReference)
+	value := ReferenceValue{}
+	if referenceValue.AlwaysNew {
+		acousticDataRecord := AcousticDataRecord{
+			Values:     referenceValue.Data,
+			NameFields: referenceValue.NameFields,
+			Tags:       referenceValue.Tags,
+		}
+		contentCreateResponse, err := NewContentService(env.AcousticAuthUrl(), env.LibraryID()).CreateOrUpdateContentWithRetry(acousticDataRecord, referenceValue.Type)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		value.ID = contentCreateResponse.Id
+	} else {
+		query, err := referenceValue.searchQuery()
+		if err != nil {
+			return nil, err
+		}
+		searchRequest := SearchRequest{
+			Term:           query,
+			ContentTypes:   []string{referenceValue.SearchType},
+			Classification: "content",
+		}
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), searchRequest, Pagination{Start: 0, Rows: 1})
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if searchResponse.Count == 0 {
+			return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type)
+		}
+		value.ID = searchResponse.Documents[0].Document.ID
+	}
+	values := make([]ReferenceValue, 0, 1)
+	values = append(values, value)
+	element.Values = values
 	return element, nil
 }
