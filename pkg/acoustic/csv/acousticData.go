@@ -56,15 +56,16 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 		}
 
 		acousticDataList = append(acousticDataList, api.AcousticDataRecord{
-			Values:       acousticData,
-			NameFields:   configTypeMapping.Name,
-			Tags:         configTypeMapping.Tags,
-			Update:       configTypeMapping.Update,
-			SearchTerm:   configTypeMapping.SearchTerm,
-			SearchValues: searchValues,
-			SearchKeys:   configTypeMapping.SearchKeys,
-			SearchType:   configTypeMapping.SearchType,
-			CSVRecordKey: configTypeMapping.CsvRecordKey,
+			Values:                 acousticData,
+			NameFields:             configTypeMapping.Name,
+			Tags:                   configTypeMapping.Tags,
+			Update:                 configTypeMapping.Update,
+			CreateNonExistingItems: configTypeMapping.CreateNonExistingItems,
+			SearchTerm:             configTypeMapping.SearchTerm,
+			SearchValues:           searchValues,
+			SearchKeys:             configTypeMapping.SearchKeys,
+			SearchType:             configTypeMapping.SearchType,
+			CSVRecordKey:           configTypeMapping.CsvRecordKey,
 		})
 	}
 	return acousticDataList, nil

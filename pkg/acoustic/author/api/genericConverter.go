@@ -20,15 +20,16 @@ import (
 type ContextKey string
 
 type AcousticDataRecord struct {
-	CSVRecordKey string
-	Update       bool
-	SearchTerm   string
-	SearchValues map[string]string
-	SearchKeys   []string
-	SearchType   string
-	NameFields   []string
-	Values       []GenericData
-	Tags         []string
+	CSVRecordKey           string
+	Update                 bool
+	CreateNonExistingItems bool
+	SearchTerm             string
+	SearchValues           map[string]string
+	SearchKeys             []string
+	SearchType             string
+	NameFields             []string
+	Values                 []GenericData
+	Tags                   []string
 }
 
 type GenericData struct {

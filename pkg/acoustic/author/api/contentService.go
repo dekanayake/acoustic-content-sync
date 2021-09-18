@@ -131,6 +131,10 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 				return response, nil
 			}
 
+		} else {
+			if !record.CreateNonExistingItems {
+				return nil, errors.ErrorMessageWithStack("No existing items found for query :" + query + " search type :" + record.SearchType)
+			}
 		}
 	}
 	response, createErr := service.contentClient.Create(content)

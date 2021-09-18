@@ -36,6 +36,35 @@ var textElementConverter = acousticElementConvertor{
 	}),
 }
 
+var groupElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldGroup)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := GroupElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range element.Value {
+			convertedVal, err := Convert(v.(map[string]interface{}))
+			if err != nil {
+				return nil, err
+			}
+			element.Value[k] = convertedVal
+		}
+
+		return element, nil
+	}),
+}
+
 var multiReferenceElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
 		return fieldType == AcousticFieldType(AcousticFieldReference)
@@ -57,9 +86,14 @@ var multiReferenceElementConverter = acousticElementConvertor{
 	}),
 }
 
-var converterList = []acousticElementConvertor{
-	textElementConverter,
-	multiReferenceElementConverter,
+var converterList = make([]acousticElementConvertor, 0)
+
+func init() {
+	converterList = []acousticElementConvertor{
+		textElementConverter,
+		multiReferenceElementConverter,
+		groupElementConverter,
+	}
 }
 
 func Convert(acousticElementData map[string]interface{}) (Element, error) {

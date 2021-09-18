@@ -24,15 +24,16 @@ type ContentTypesMapping struct {
 }
 
 type ContentTypeMapping struct {
-	Type         string                `yaml:"type"`
-	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
-	Name         []string              `yaml:"name"`
-	Tags         []string              `yaml:"tags"`
-	CsvRecordKey string                `yaml:"csvRecordKey"`
-	Update       bool                  `yaml:"update"`
-	SearchTerm   string                `yaml:"searchTerm"`
-	SearchKeys   []string              `yaml:"searchKeys"`
-	SearchType   string                `yaml:"searchType"`
+	Type                   string                `yaml:"type"`
+	FieldMapping           []ContentFieldMapping `yaml:"fieldMapping"`
+	Name                   []string              `yaml:"name"`
+	Tags                   []string              `yaml:"tags"`
+	CsvRecordKey           string                `yaml:"csvRecordKey"`
+	Update                 bool                  `yaml:"update"`
+	CreateNonExistingItems bool                  `yaml:"createNonExistingItems"`
+	SearchTerm             string                `yaml:"searchTerm"`
+	SearchKeys             []string              `yaml:"searchKeys"`
+	SearchType             string                `yaml:"searchType"`
 }
 
 type CategoryMapping struct {
