@@ -72,15 +72,42 @@ func threed_materials(feedName string, configName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
 
-	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
-	err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials", configName)
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials glb", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	status, err := contentService.CreateBatch("07198b81-3dc0-4131-9f4c-17f3d1640049", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
-	err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials glb", configName)
-	if err != nil {
-		errorHandling.WithError(err).Panic(err)
-	}
+}
+
+func threed_materials_update(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials glb", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
 
 	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
 	status, err := contentService.CreateBatch("07198b81-3dc0-4131-9f4c-17f3d1640049", feedName, configName)
@@ -98,12 +125,12 @@ func threed_materials(feedName string, configName string) {
 func threed_materials_configuration(feedName string, configName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
-
-	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
-	err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
-	if err != nil {
-		errorHandling.WithError(err).Panic(err)
-	}
+	//
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
 
 	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
 	status, err := contentService.CreateBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
@@ -242,29 +269,30 @@ func custom_search(feedName string, configName string) {
 //	//}
 //}
 //
-//func badges(feedName string, configName string) {
-//
-//	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-//
-//	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
-//	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
-//	//if err != nil {
-//	//	errorHandling.WithError(err).Panic(err)
-//	//}
-//
-//	contentService := csv.NewContentService(os.Getenv("AcousticAPIURL"), "59f1a68b-f518-47a5-83d9-bd16e26c7daa")
-//	status, err := contentService.CreateBatch("da86ef75-537b-4c67-aebf-e476e1d2a099", feedName, configName)
-//	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
-//	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
-//	if status.FailuresExist() {
-//		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
-//		status.PrintFailed()
-//	}
-//	if err != nil {
-//		errorHandling.WithError(err).Panic(err)
-//	}
-//
-//}
+func badges(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "59f1a68b-f518-47a5-83d9-bd16e26c7daa")
+	status, err := contentService.CreateBatch("da86ef75-537b-4c67-aebf-e476e1d2a099", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
 //
 //func sliBanners(feedName string, configName string) {
 //	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
@@ -377,9 +405,19 @@ func main() {
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
 
-	feedName := "TheBlock13Sep.csv"
+	//feedName := "210906_Metadata_materials.csv"
+	//configName := "config_3d_product_material_update.yaml"
+	////delete_reece(configName)
+	//threed_materials_update(feedName, configName)
+
+	feedName := "gsdu.csv"
 	configName := "config_search_config.yaml"
 	//delete_reece(configName)
 	custom_search(feedName, configName)
+
+	//feedName := "Custom order tag - New Release Products for NZ Website.csv"
+	//configName := "config_customorder_nz_product_badges.yaml"
+	////delete_reece(configName)
+	//badges(feedName, configName)
 
 }
