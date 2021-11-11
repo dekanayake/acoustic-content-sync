@@ -2,6 +2,7 @@ package csv
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
@@ -10,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 	"io/ioutil"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -142,15 +145,23 @@ func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow 
 		}
 
 		if contentFieldMapping.ValueAsJSONList {
-			var jsonValue []map[string]string
+			var jsonValue []map[string]interface{}
 			json.Unmarshal([]byte(value), &jsonValue)
-			return jsonValue[contentFieldMapping.JSONListIndex][contentFieldMapping.JSONKey], nil
+			mapWithStringVal, err := toStringValueMapArray(jsonValue)
+			if err != nil {
+				return "", errors.ErrorWithStack(err)
+			}
+			return mapWithStringVal[contentFieldMapping.JSONListIndex][contentFieldMapping.JSONKey], nil
 		}
 
 		if contentFieldMapping.ValueAsJSON {
-			var jsonValue map[string]string
+			var jsonValue map[string]interface{}
 			json.Unmarshal([]byte(value), &jsonValue)
-			return jsonValue[contentFieldMapping.JSONKey], nil
+			mapWithStringVal, err := toStringValueMap(jsonValue)
+			if err != nil {
+				return "", errors.ErrorWithStack(err)
+			}
+			return mapWithStringVal[contentFieldMapping.JSONKey], nil
 		} else {
 			return value, nil
 		}
@@ -162,9 +173,49 @@ func (contentFieldMapping ContentFieldMapping) getJSONACSVColumnValue(dataRow Da
 	if err != nil {
 		return nil, err
 	}
-	var jsonValue []map[string]string
-	json.Unmarshal([]byte(value), &jsonValue)
-	return jsonValue, nil
+	var jsonArray []map[string]interface{}
+	json.Unmarshal([]byte(value), &jsonArray)
+	jsonValueAsStringArray, err := toStringValueMapArray(jsonArray)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	return jsonValueAsStringArray, nil
+}
+
+func toStringValueMapArray(jsonValueList []map[string]interface{}) ([]map[string]string, error) {
+	stringValueMapArray := make([]map[string]string, 0)
+	for _, jsonValue := range jsonValueList {
+		stringValueMap, err := toStringValueMap(jsonValue)
+		if err != nil {
+			return nil, err
+		}
+		stringValueMapArray = append(stringValueMapArray, stringValueMap)
+	}
+	return stringValueMapArray, nil
+}
+
+func toStringValueMap(jsonValue map[string]interface{}) (map[string]string, error) {
+	jsonValueAsString := make(map[string]string)
+	for key, value := range jsonValue {
+		valueAsString := ""
+		switch reflect.TypeOf(value).Kind() {
+		case reflect.Int:
+			valueAsString = strconv.Itoa(value.(int))
+		case reflect.String:
+			valueAsString = value.(string)
+		case reflect.Slice:
+			slice := reflect.ValueOf(value)
+			stringSlice := make([]string, 0, slice.Len())
+			for i := 0; i < slice.Len(); i++ {
+				stringSlice = append(stringSlice, fmt.Sprint(slice.Index(i)))
+			}
+			valueAsString = "[" + strings.Join(stringSlice, ",") + "]"
+		default:
+			return nil, errors.ErrorMessageWithStack("type not available. ")
+		}
+		jsonValueAsString[key] = valueAsString
+	}
+	return jsonValueAsString, nil
 }
 
 func (contentFieldMapping ContentFieldMapping) Validate() error {
