@@ -452,41 +452,46 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 }
 
 func (element FileElement) Convert(data interface{}) (Element, error) {
-	fileData := data.(GenericData)
-	fileValue := fileData.Value.(AcousticFileAsset)
-	var assetFile *os.File
-	var assetExtension string
-	var err error
-	if fileValue.IsWebUrl {
-		assetFilePath, assetExt, err := getWebAssetFile(fileData)
-		assetExtension = assetExt
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		assetFile, err = os.Open(assetFilePath)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		defer assetFile.Close()
-		defer os.Remove(assetFile.Name())
-	} else {
-		assetFile, assetExtension, err = getLocalAssetFile(fileValue)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		defer assetFile.Close()
-	}
+	element.PreContentCreateFunctionList = []PreContentCreateFunc{
+		func() (Element, error) {
+			fileData := data.(GenericData)
+			fileValue := fileData.Value.(AcousticFileAsset)
+			var assetFile *os.File
+			var assetExtension string
+			var err error
+			if fileValue.IsWebUrl {
+				assetFilePath, assetExt, err := getWebAssetFile(fileData)
+				assetExtension = assetExt
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				assetFile, err = os.Open(assetFilePath)
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				defer assetFile.Close()
+				defer os.Remove(assetFile.Name())
+			} else {
+				assetFile, assetExtension, err = getLocalAssetFile(fileValue)
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				defer assetFile.Close()
+			}
 
-	assetNameValue := getAssetName(fileValue.AssetName) + assetExtension
+			assetNameValue := getAssetName(fileValue.AssetName) + assetExtension
 
-	acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
-	resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
-		acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
-	}
-	element.Asset = Asset{
-		ID: resp.Id,
+			acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
+			resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
+				acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			element.Asset = Asset{
+				ID: resp.Id,
+			}
+			return element, nil
+		},
 	}
 	return element, nil
 }

@@ -97,18 +97,30 @@ type Content struct {
 	Tags      []string               `json:"tags"`
 }
 
+type PreContentCreateFunc func() (Element, error)
+
 type Element interface {
 	Convert(data interface{}) (Element, error)
 	Update(new Element) (Element, error)
+	PreContentCreateFunctions() []PreContentCreateFunc
 }
 
 type element struct {
-	ElementType AcousticFieldType `json:"elementType"`
+	ElementType                  AcousticFieldType      `json:"elementType"`
+	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
 }
 
 type TextElement struct {
 	Value string `json:"value"`
 	element
+}
+
+func (element element) PreContentCreateFunctions() []PreContentCreateFunc {
+	if element.PreContentCreateFunctionList == nil {
+		return []PreContentCreateFunc{}
+	} else {
+		return element.PreContentCreateFunctionList
+	}
 }
 
 type FormattedTextElement struct {

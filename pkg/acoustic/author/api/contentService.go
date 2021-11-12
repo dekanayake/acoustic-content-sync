@@ -50,6 +50,20 @@ func (service *contentService) CreateOrUpdateContentWithRetry(record AcousticDat
 	return response, err
 }
 
+func handlePreContentCreateFunctions(content Content) (Content, error) {
+	for fieldName, element := range content.Elements {
+		preContentCreateFuncs := element.(Element).PreContentCreateFunctions()
+		for _, preContentCreateFunc := range preContentCreateFuncs {
+			element, err := preContentCreateFunc()
+			if err != nil {
+				return Content{}, err
+			}
+			content.Elements[fieldName] = element
+		}
+	}
+	return content, nil
+}
+
 func (service *contentService) createOrUpdate(record AcousticDataRecord, contentType string) (*ContentAutheringResponse, error) {
 	acousticContentDataOut := koazee.StreamOf(record.Values).
 		Reduce(func(acc map[string]interface{}, columnData GenericData) (map[string]interface{}, error) {
@@ -85,6 +99,35 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 		LibraryID: service.acousticContentLib,
 		Elements:  acousticContentData,
 		Tags:      record.Tags,
+	}
+	if !record.Update && record.CreateNonExistingItems {
+		query, err := record.searchQuerytoGetTheContentToUpdate()
+		if err != nil {
+			return nil, err
+		}
+		searchRequest := SearchRequest{
+			Term:           query,
+			ContentTypes:   []string{record.SearchType},
+			Classification: "content",
+		}
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), searchRequest, Pagination{Start: 0, Rows: 1})
+		if err != nil {
+			return nil, err
+		}
+		if searchResponse.Count == 0 {
+			content, err := handlePreContentCreateFunctions(content)
+			if err != nil {
+				return nil, err
+			}
+			response, createErr := service.contentClient.Create(content)
+			if createErr != nil {
+				return nil, createErr
+			} else {
+				return response, nil
+			}
+		} else {
+			return nil, nil
+		}
 	}
 	if record.Update {
 		query, err := record.searchQuerytoGetTheContentToUpdate()
@@ -136,6 +179,10 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 				return nil, errors.ErrorMessageWithStack("No existing items found for query :" + query + " search type :" + record.SearchType)
 			}
 		}
+	}
+	content, err = handlePreContentCreateFunctions(content)
+	if err != nil {
+		return nil, err
 	}
 	response, createErr := service.contentClient.Create(content)
 	if createErr != nil {
