@@ -46,8 +46,9 @@ type AcousticGroup struct {
 }
 
 type AcousticMultiGroup struct {
-	Type string
-	Data [][]GenericData
+	Type                          string
+	ListUpdateAcousticPropertyKey string
+	Data                          [][]GenericData
 }
 
 type AcousticReference struct {

@@ -36,6 +36,27 @@ var textElementConverter = acousticElementConvertor{
 	}),
 }
 
+var numberElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldNumber)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := NumberElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
 var groupElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
 		return fieldType == AcousticFieldType(AcousticFieldGroup)
@@ -61,6 +82,27 @@ var groupElementConverter = acousticElementConvertor{
 			element.Value[k] = convertedVal
 		}
 
+		return element, nil
+	}),
+}
+
+var multiGroupElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldGroup)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return true
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := MultiGroupElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
 		return element, nil
 	}),
 }
@@ -91,8 +133,10 @@ var converterList = make([]acousticElementConvertor, 0)
 func init() {
 	converterList = []acousticElementConvertor{
 		textElementConverter,
+		numberElementConverter,
 		multiReferenceElementConverter,
 		groupElementConverter,
+		multiGroupElementConverter,
 	}
 }
 
@@ -115,7 +159,9 @@ func Convert(acousticElementData map[string]interface{}) (Element, error) {
 					return nil, err
 				}
 				return converted, nil
-			} else {
+			}
+
+			if !multiOk {
 				converted, err := converter.convert(acousticElementData)
 				if err != nil {
 					return nil, err

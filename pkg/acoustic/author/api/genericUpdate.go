@@ -68,7 +68,18 @@ func (element GroupElement) Update(new Element) (Element, error) {
 }
 
 func (element MultiGroupElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	newValue := new.(MultiGroupElement)
+	//for _,newItem := range newValue.Values {
+	//	for k, v := range newItem {
+	//		updatedOldVal, err := v.(Element).Update(newItem[k].(Element))
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		element.Values[k] = updatedOldVal
+	//	}
+	//}
+
+	return newValue, nil
 }
 
 func (element ReferenceElement) Update(new Element) (Element, error) {
