@@ -24,7 +24,14 @@ func (element FormattedTextElement) Update(new Element) (Element, error) {
 }
 
 func (element BooleanElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	oldValue := element.Value
+	newValue := new.(BooleanElement).Value
+	if oldValue != newValue {
+		element.Value = newValue
+		return element, nil
+	} else {
+		return nil, nil
+	}
 }
 
 func (element MultiTextElement) Update(new Element) (Element, error) {
@@ -69,16 +76,6 @@ func (element GroupElement) Update(new Element) (Element, error) {
 
 func (element MultiGroupElement) Update(new Element) (Element, error) {
 	newValue := new.(MultiGroupElement)
-	//for _,newItem := range newValue.Values {
-	//	for k, v := range newItem {
-	//		updatedOldVal, err := v.(Element).Update(newItem[k].(Element))
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		element.Values[k] = updatedOldVal
-	//	}
-	//}
-
 	return newValue, nil
 }
 
