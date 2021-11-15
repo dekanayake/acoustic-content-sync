@@ -175,6 +175,7 @@ var converterList = make([]acousticElementConvertor, 0)
 func init() {
 	converterList = []acousticElementConvertor{
 		textElementConverter,
+		formattedTextElementConverter,
 		numberElementConverter,
 		multiReferenceElementConverter,
 		groupElementConverter,
