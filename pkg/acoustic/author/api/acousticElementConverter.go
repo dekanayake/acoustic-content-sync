@@ -17,7 +17,7 @@ type acousticElementConvertor struct {
 
 var textElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
-		return fieldType == AcousticFieldType(AcousticFieldText) || fieldType == AcousticFieldType(AcousticFieldFormattedText)
+		return fieldType == AcousticFieldType(AcousticFieldText)
 	}),
 	isMultiMatcher: isMultiMatcherFunc(func() bool {
 		return false
@@ -28,6 +28,27 @@ var textElementConverter = acousticElementConvertor{
 			return nil, err
 		}
 		element := TextElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
+var formattedTextElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldFormattedText)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := FormattedTextElement{}
 		err = json.Unmarshal(jsonString, &element)
 		if err != nil {
 			return nil, err
