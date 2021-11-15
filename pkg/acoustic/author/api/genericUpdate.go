@@ -17,7 +17,7 @@ func (element TextElement) Update(new Element) (Element, error) {
 
 func (element FormattedTextElement) Update(new Element) (Element, error) {
 	oldValue := element.Value
-	newValue := new.(TextElement).Value
+	newValue := new.(FormattedTextElement).Value
 	if oldValue != newValue {
 		element.Value = newValue
 		return element, nil
