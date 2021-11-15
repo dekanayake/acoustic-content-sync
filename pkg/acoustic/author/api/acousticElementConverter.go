@@ -17,7 +17,7 @@ type acousticElementConvertor struct {
 
 var textElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
-		return fieldType == AcousticFieldType(AcousticFieldText)
+		return fieldType == AcousticFieldType(AcousticFieldText) || fieldType == AcousticFieldType(AcousticFieldFormattedText)
 	}),
 	isMultiMatcher: isMultiMatcherFunc(func() bool {
 		return false

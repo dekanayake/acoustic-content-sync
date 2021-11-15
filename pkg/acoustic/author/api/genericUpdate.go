@@ -15,11 +15,18 @@ func (element TextElement) Update(new Element) (Element, error) {
 	}
 }
 
-func (element DateElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+func (element FormattedTextElement) Update(new Element) (Element, error) {
+	oldValue := element.Value
+	newValue := new.(TextElement).Value
+	if oldValue != newValue {
+		element.Value = newValue
+		return element, nil
+	} else {
+		return nil, nil
+	}
 }
 
-func (element FormattedTextElement) Update(new Element) (Element, error) {
+func (element DateElement) Update(new Element) (Element, error) {
 	return nil, errors.ErrorMessageWithStack("not implemented")
 }
 
