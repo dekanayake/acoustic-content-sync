@@ -98,16 +98,22 @@ type Content struct {
 }
 
 type PreContentCreateFunc func() (Element, error)
+type PreContentUpdateFunc func(updatedElement Element) (Element, error)
+type PostContentUpdateFunc func(oldElement Element) error
 
 type Element interface {
 	Convert(data interface{}) (Element, error)
 	Update(new Element) (Element, error)
 	PreContentCreateFunctions() []PreContentCreateFunc
+	PreContentUpdateFunctions() []PreContentUpdateFunc
+	PostContentUpdateFunctions() []PostContentUpdateFunc
 }
 
 type element struct {
-	ElementType                  AcousticFieldType      `json:"elementType"`
-	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
+	ElementType                   AcousticFieldType       `json:"elementType"`
+	PreContentCreateFunctionList  []PreContentCreateFunc  `json:"-"`
+	PreContentUpdateFunctionList  []PreContentUpdateFunc  `json:"-"`
+	PostContentUpdateFunctionList []PostContentUpdateFunc `json:"-"`
 }
 
 type TextElement struct {
@@ -120,6 +126,22 @@ func (element element) PreContentCreateFunctions() []PreContentCreateFunc {
 		return []PreContentCreateFunc{}
 	} else {
 		return element.PreContentCreateFunctionList
+	}
+}
+
+func (element element) PreContentUpdateFunctions() []PreContentUpdateFunc {
+	if element.PreContentCreateFunctionList == nil {
+		return []PreContentUpdateFunc{}
+	} else {
+		return element.PreContentUpdateFunctionList
+	}
+}
+
+func (element element) PostContentUpdateFunctions() []PostContentUpdateFunc {
+	if element.PostContentUpdateFunctionList == nil {
+		return []PostContentUpdateFunc{}
+	} else {
+		return element.PostContentUpdateFunctionList
 	}
 }
 

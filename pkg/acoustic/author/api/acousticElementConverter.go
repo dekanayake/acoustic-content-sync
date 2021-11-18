@@ -99,6 +99,27 @@ var numberElementConverter = acousticElementConvertor{
 	}),
 }
 
+var fileElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldFile)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := FileElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
 var groupElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
 		return fieldType == AcousticFieldType(AcousticFieldGroup)
@@ -181,6 +202,7 @@ func init() {
 		groupElementConverter,
 		multiGroupElementConverter,
 		booleanElementConverter,
+		fileElementConverter,
 	}
 }
 

@@ -66,7 +66,9 @@ func (element ImageElement) Update(new Element) (Element, error) {
 }
 
 func (element FileElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	newElement := new.(FileElement)
+	newElement.Asset.ID = element.Asset.ID
+	return newElement, nil
 }
 
 func (element GroupElement) Update(new Element) (Element, error) {
@@ -76,7 +78,9 @@ func (element GroupElement) Update(new Element) (Element, error) {
 		if err != nil {
 			return nil, err
 		}
-		element.Value[k] = updatedOldVal
+		if updatedOldVal != nil {
+			element.Value[k] = updatedOldVal
+		}
 	}
 	return element, nil
 }

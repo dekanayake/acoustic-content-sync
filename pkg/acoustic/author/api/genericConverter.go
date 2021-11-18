@@ -6,6 +6,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/dekanayake/acoustic-content-sync/pkg/image"
+	"github.com/monmohan/xferspdy"
 	"github.com/wesovilabs/koazee"
 	"io"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ContextKey string
@@ -384,7 +386,27 @@ func getWebAssetFile(imgData GenericData) (string, string, error) {
 	}
 
 	return file.Name(), assetExtension, nil
+}
 
+func getExistingAssetFile(filePath string) (*os.File, error) {
+	response, err := http.Get(env.AcousticBaseUrl() + filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		return nil, errors.ErrorMessageWithStack("Received non 200 response code")
+	}
+	file, err := ioutil.TempFile("", "acousticWebAsset")
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	defer file.Close()
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	return file, nil
 }
 
 func (element ImageElement) Convert(data interface{}) (Element, error) {
@@ -452,35 +474,86 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 }
 
 func (element FileElement) Convert(data interface{}) (Element, error) {
-	element.PreContentCreateFunctionList = []PreContentCreateFunc{
-		func() (Element, error) {
-			fileData := data.(GenericData)
-			fileValue := fileData.Value.(AcousticFileAsset)
-			var assetFile *os.File
-			var assetExtension string
-			var err error
-			if fileValue.IsWebUrl {
-				assetFilePath, assetExt, err := getWebAssetFile(fileData)
-				assetExtension = assetExt
-				if err != nil {
-					return nil, errors.ErrorWithStack(err)
-				}
-				assetFile, err = os.Open(assetFilePath)
-				if err != nil {
-					return nil, errors.ErrorWithStack(err)
-				}
-				defer assetFile.Close()
-				defer os.Remove(assetFile.Name())
-			} else {
-				assetFile, assetExtension, err = getLocalAssetFile(fileValue)
-				if err != nil {
-					return nil, errors.ErrorWithStack(err)
-				}
-				defer assetFile.Close()
+	assetCreationFn := func() (Element, error) {
+		fileData := data.(GenericData)
+		fileValue := fileData.Value.(AcousticFileAsset)
+		var assetFile *os.File
+		var assetExtension string
+		var err error
+		if fileValue.IsWebUrl {
+			assetFilePath, assetExt, err := getWebAssetFile(fileData)
+			assetExtension = assetExt
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
 			}
+			assetFile, err = os.Open(assetFilePath)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			defer assetFile.Close()
+			defer os.Remove(assetFile.Name())
+		} else {
+			assetFile, assetExtension, err = getLocalAssetFile(fileValue)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			defer assetFile.Close()
+		}
 
-			assetNameValue := getAssetName(fileValue.AssetName) + assetExtension
+		assetNameValue := getAssetName(fileValue.AssetName) + assetExtension
 
+		acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
+		resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
+			acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		element.Asset = Asset{
+			ID: resp.Id,
+		}
+		return element, nil
+	}
+
+	assetUpdateFn := func(updatedElement Element) (Element, error) {
+		fileData := data.(GenericData)
+		fileValue := fileData.Value.(AcousticFileAsset)
+		var assetFile *os.File
+		var assetExtension string
+		var err error
+		if fileValue.IsWebUrl {
+			assetFilePath, assetExt, err := getWebAssetFile(fileData)
+			assetExtension = assetExt
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			assetFile, err = os.Open(assetFilePath)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			defer assetFile.Close()
+			defer os.Remove(assetFile.Name())
+		} else {
+			assetFile, assetExtension, err = getLocalAssetFile(fileValue)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			defer assetFile.Close()
+		}
+
+		existingAsset, err := NewAssetClient(env.AcousticAPIUrl()).Get(updatedElement.(FileElement).Asset.ID)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		existingAssetFile, err := getExistingAssetFile(existingAsset.Path)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		newFingerprint := xferspdy.NewFingerprint(assetFile.Name(), 1024)
+		oldFingerprint := xferspdy.NewFingerprint(existingAssetFile.Name(), 1024)
+		isAssetsSame := newFingerprint.DeepEqual(oldFingerprint)
+
+		if !isAssetsSame {
+			assetNameValue := getAssetName(fileValue.AssetName) + "_update_" + strconv.FormatInt(time.Now().Unix(), 10) + assetExtension
 			acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
 			resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
 				acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
@@ -491,8 +564,24 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 				ID: resp.Id,
 			}
 			return element, nil
-		},
+		} else {
+			element.Asset = Asset{
+				ID: updatedElement.(FileElement).Asset.ID,
+			}
+			return element, nil
+		}
 	}
+
+	assetDeleteFn := func(oldElement Element) error {
+		err := NewAssetClient(env.AcousticAPIUrl()).Delete(oldElement.(FileElement).Asset.ID)
+		if err != nil {
+			errors.ErrorWithStack(err)
+		}
+		return nil
+	}
+	element.PreContentCreateFunctionList = []PreContentCreateFunc{assetCreationFn}
+	element.PreContentUpdateFunctionList = []PreContentUpdateFunc{assetUpdateFn}
+	element.PostContentUpdateFunctionList = []PostContentUpdateFunc{assetDeleteFn}
 	return element, nil
 }
 

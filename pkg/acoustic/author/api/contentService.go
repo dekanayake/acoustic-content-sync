@@ -4,6 +4,8 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	"github.com/jinzhu/copier"
+	"github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 )
 
@@ -62,6 +64,37 @@ func handlePreContentCreateFunctions(content Content) (Content, error) {
 		}
 	}
 	return content, nil
+}
+
+func handlePreContentUpdateFunctions(content Content) (Content, error) {
+	for fieldName, element := range content.Elements {
+		if elementInstance, ok := element.(Element); ok {
+			preContentUpdateFuncs := elementInstance.PreContentUpdateFunctions()
+			for _, preContentUpdateFunc := range preContentUpdateFuncs {
+				element, err := preContentUpdateFunc(element.(Element))
+				if err != nil {
+					return Content{}, err
+				}
+				content.Elements[fieldName] = element
+			}
+		}
+	}
+	return content, nil
+}
+
+func handlePostContentUpdateFunctions(content Content) error {
+	for _, element := range content.Elements {
+		if elementInstance, ok := element.(Element); ok {
+			postContentUpdateFuncs := elementInstance.PostContentUpdateFunctions()
+			for _, postContentUpdateFunc := range postContentUpdateFuncs {
+				err := postContentUpdateFunc(element.(Element))
+				if err != nil {
+					logrus.Warn("post update field with error ", err)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (service *contentService) createOrUpdate(record AcousticDataRecord, contentType string) (*ContentAutheringResponse, error) {
@@ -146,15 +179,18 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 		if searchResponse.Count > 0 {
 			contentId := searchResponse.Documents[0].Document.ID
 			existingContent, err := service.contentClient.Get(contentId)
+			updatedContent := Content{}
+			copier.Copy(&updatedContent, &existingContent)
 			if err != nil {
 				return nil, err
 			}
 			for newContentElementKey, newElement := range content.Elements {
-				existingContentElement := existingContent.Elements[newContentElementKey]
+				existingContentElement := updatedContent.Elements[newContentElementKey]
 				if existingContentElement == nil {
-					existingContent.Elements[newContentElementKey] = newElement
+					updatedContent.Elements[newContentElementKey] = newElement
 				} else {
 					existingElement, err := Convert(existingContentElement.(map[string]interface{}))
+					existingContent.Elements[newContentElementKey] = existingElement
 					if err != nil {
 						return nil, err
 					}
@@ -163,11 +199,16 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 						return nil, err
 					}
 					if updatedElement != nil {
-						existingContent.Elements[newContentElementKey] = updatedElement
+						updatedContent.Elements[newContentElementKey] = updatedElement
 					}
 				}
 			}
-			response, udpateError := service.contentClient.Update(*existingContent)
+			content, err := handlePreContentUpdateFunctions(updatedContent)
+			defer handlePostContentUpdateFunctions(*existingContent)
+			if err != nil {
+				return nil, err
+			}
+			response, udpateError := service.contentClient.Update(content)
 			if udpateError != nil {
 				return nil, udpateError
 			} else {

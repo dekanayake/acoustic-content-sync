@@ -24,6 +24,10 @@ type AssetCreateResponse struct {
 	IsManaged bool   `json:"isManaged"`
 }
 
+type AssetResponse struct {
+	Path string `json:"path"`
+}
+
 type AssetClient interface {
 	Create(
 		reader io.Reader,
@@ -31,6 +35,7 @@ type AssetClient interface {
 		tags []string,
 		path string, status string, profiles []string, libraryID string) (*AssetCreateResponse, error)
 	Delete(id string) error
+	Get(id string) (*AssetResponse, error)
 }
 
 type assetClient struct {
@@ -42,6 +47,23 @@ func NewAssetClient(acousticApiUrl string) AssetClient {
 	return &assetClient{
 		c:              Connect(),
 		acousticApiUrl: acousticApiUrl,
+	}
+}
+
+func (assetClient assetClient) Get(id string) (*AssetResponse, error) {
+	resp, err := assetClient.c.NewRequest().SetResult(&AssetResponse{}).
+		SetError(&ContentAuthoringErrorResponse{}).
+		Get(assetClient.acousticApiUrl + "/authoring/v1/assets/" + id)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return resp.Result().(*AssetResponse), nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in creating asset : " + "  " + string(errorString))
+	} else {
+		return nil, errors.ErrorMessageWithStack("error in creating asset : " + resp.Status())
 	}
 }
 
@@ -87,7 +109,7 @@ func (assetClient *assetClient) Create(
 }
 
 func (assetClient assetClient) Delete(id string) error {
-	req := assetClient.c.NewRequest().SetPathParams(map[string]string{"id": id})
+	req := assetClient.c.NewRequest().SetPathParams(map[string]string{"id": id}).SetError(&ContentAuthoringErrorResponse{})
 
 	if resp, err := req.Delete(assetClient.acousticApiUrl + "/authoring/v1/assets/{id}"); err != nil {
 		return errors.ErrorWithStack(err)
