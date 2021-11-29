@@ -15,6 +15,17 @@ func (element TextElement) Update(new Element) (Element, error) {
 	}
 }
 
+func (element FloatElement) Update(new Element) (Element, error) {
+	oldValue := element.Value
+	newValue := new.(FloatElement).Value
+	if oldValue != newValue {
+		element.Value = newValue
+		return element, nil
+	} else {
+		return nil, nil
+	}
+}
+
 func (element FormattedTextElement) Update(new Element) (Element, error) {
 	oldValue := element.Value
 	newValue := new.(FormattedTextElement).Value

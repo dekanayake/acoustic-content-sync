@@ -10,6 +10,7 @@ import (
 	"github.com/wesovilabs/koazee"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -215,6 +216,15 @@ func (element NumberElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
+func (element FloatElement) Convert(data interface{}) (Element, error) {
+	numValue, err := strconv.ParseFloat(data.(GenericData).Value.(string), 32)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	element.Value = math.Ceil(numValue*10000) / 10000
+	return element, nil
+}
+
 func (element LinkElement) Convert(data interface{}) (Element, error) {
 	element.LinkURL = data.(GenericData).Value.(string)
 	return element, nil
@@ -365,7 +375,7 @@ func getLocalAssetFile(imgData AcousticFileAsset) (*os.File, string, error) {
 }
 
 func getWebAssetFile(imgData GenericData) (string, string, error) {
-	assetUrl := imgData.Value.(string)
+	assetUrl := imgData.Value.(AcousticImageAsset).Value
 	assetExtension := filepath.Ext(assetUrl)
 	response, err := http.Get(assetUrl)
 	if err != nil {

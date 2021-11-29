@@ -20,6 +20,7 @@ const (
 	MultiText      FieldType = "multi-text"
 	FormattedText  FieldType = "formatted-text"
 	Number         FieldType = "number"
+	Float          FieldType = "float"
 	Boolean        FieldType = "toggle"
 	Link           FieldType = "link"
 	Date           FieldType = "date"
@@ -41,6 +42,8 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 	case FormattedText:
 		return AcousticFieldType(AcousticFieldFormattedText), nil
 	case Number:
+		return AcousticFieldType(AcousticFieldNumber), nil
+	case Float:
 		return AcousticFieldType(AcousticFieldNumber), nil
 	case Boolean:
 		return AcousticFieldType(AcousticFieldBoolean), nil
@@ -157,6 +160,11 @@ type MultiTextElement struct {
 
 type NumberElement struct {
 	Value int64 `json:"value"`
+	element
+}
+
+type FloatElement struct {
+	Value float64 `json:"value"`
 	element
 }
 
@@ -291,6 +299,10 @@ func Build(fieldType string) (Element, error) {
 		return element, nil
 	case Number:
 		element := NumberElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case Float:
+		element := FloatElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	case Boolean:

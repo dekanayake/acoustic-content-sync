@@ -93,7 +93,13 @@ var numberElementConverter = acousticElementConvertor{
 		element := NumberElement{}
 		err = json.Unmarshal(jsonString, &element)
 		if err != nil {
-			return nil, err
+			//if unmarshelling fail one reason can be the value is stored as a float so , try unmarshelling to float
+			element := FloatElement{}
+			err = json.Unmarshal(jsonString, &element)
+			if err != nil {
+				return nil, err
+			}
+			return element, nil
 		}
 		return element, nil
 	}),
