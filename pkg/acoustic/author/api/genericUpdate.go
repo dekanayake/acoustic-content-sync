@@ -73,7 +73,9 @@ func (element CategoryPartElement) Update(new Element) (Element, error) {
 }
 
 func (element ImageElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	newElement := new.(ImageElement)
+	newElement.Asset.ID = element.Asset.ID
+	return newElement, nil
 }
 
 func (element FileElement) Update(new Element) (Element, error) {

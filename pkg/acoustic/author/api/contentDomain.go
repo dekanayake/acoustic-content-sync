@@ -101,22 +101,22 @@ type Content struct {
 }
 
 type PreContentCreateFunc func() (Element, error)
-type PreContentUpdateFunc func(updatedElement Element) (Element, error)
-type PostContentUpdateFunc func(oldElement Element) error
+type PreContentUpdateFunc func(updatedElement Element) (Element, []PostContentUpdateFunc, error)
+type PostContentUpdateFunc func() error
 
 type Element interface {
 	Convert(data interface{}) (Element, error)
 	Update(new Element) (Element, error)
 	PreContentCreateFunctions() []PreContentCreateFunc
 	PreContentUpdateFunctions() []PreContentUpdateFunc
-	PostContentUpdateFunctions() []PostContentUpdateFunc
+	ChildElements() map[string]Element
+	UpdateChildElement(key string, updatedElement Element) error
 }
 
 type element struct {
-	ElementType                   AcousticFieldType       `json:"elementType"`
-	PreContentCreateFunctionList  []PreContentCreateFunc  `json:"-"`
-	PreContentUpdateFunctionList  []PreContentUpdateFunc  `json:"-"`
-	PostContentUpdateFunctionList []PostContentUpdateFunc `json:"-"`
+	ElementType                  AcousticFieldType      `json:"elementType"`
+	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
+	PreContentUpdateFunctionList []PreContentUpdateFunc `json:"-"`
 }
 
 type TextElement struct {
@@ -140,12 +140,12 @@ func (element element) PreContentUpdateFunctions() []PreContentUpdateFunc {
 	}
 }
 
-func (element element) PostContentUpdateFunctions() []PostContentUpdateFunc {
-	if element.PostContentUpdateFunctionList == nil {
-		return []PostContentUpdateFunc{}
-	} else {
-		return element.PostContentUpdateFunctionList
-	}
+func (element element) ChildElements() map[string]Element {
+	return nil
+}
+
+func (element element) UpdateChildElement(key string, updatedElement Element) error {
+	return nil
 }
 
 type FormattedTextElement struct {
@@ -210,6 +210,24 @@ type GroupElement struct {
 	TypeRef map[string]string      `json:"typeRef"`
 	Value   map[string]interface{} `json:"value"`
 	element
+}
+
+func (groupElement GroupElement) ChildElements() map[string]Element {
+	elementMap := make(map[string]Element)
+	for key, value := range groupElement.Value {
+		elementMap[key] = value.(Element)
+	}
+	return elementMap
+}
+
+func (groupElement GroupElement) UpdateChildElement(key string, updatedElement Element) error {
+	if _, ok := groupElement.Value[key]; ok {
+		groupElement.Value[key] = updatedElement
+		return nil
+	} else {
+		return errors.ErrorMessageWithStack("key does not exist :" + key)
+	}
+
 }
 
 type MultiGroupElement struct {

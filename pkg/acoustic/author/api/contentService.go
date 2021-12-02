@@ -5,7 +5,6 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/jinzhu/copier"
-	"github.com/sirupsen/logrus"
 	"github.com/wesovilabs/koazee"
 )
 
@@ -52,49 +51,110 @@ func (service *contentService) CreateOrUpdateContentWithRetry(record AcousticDat
 	return response, err
 }
 
-func handlePreContentCreateFunctions(content Content) (Content, error) {
-	for fieldName, element := range content.Elements {
-		preContentCreateFuncs := element.(Element).PreContentCreateFunctions()
-		for _, preContentCreateFunc := range preContentCreateFuncs {
-			element, err := preContentCreateFunc()
-			if err != nil {
-				return Content{}, err
+func handlePreContentCreateFunctionsOnElement(element Element) (Element, error) {
+	if element.ChildElements() != nil {
+		childElements := element.ChildElements()
+		for key, childElement := range childElements {
+			if childElement.ChildElements() != nil {
+				createdChildElement, err := handlePreContentCreateFunctionsOnElement(childElement)
+				if err != nil {
+					return nil, err
+				}
+				element.UpdateChildElement(key, createdChildElement)
+			} else {
+				for _, preContentCreateFunc := range childElement.PreContentCreateFunctions() {
+					createdChildElement, err := preContentCreateFunc()
+					if err != nil {
+						return nil, err
+					}
+					element.UpdateChildElement(key, createdChildElement)
+				}
 			}
-			content.Elements[fieldName] = element
 		}
+		return element, nil
+	} else {
+		return element, nil
 	}
-	return content, nil
 }
 
-func handlePreContentUpdateFunctions(content Content) (Content, error) {
+func handlePreContentCreateFunctions(content Content) (Content, error) {
 	for fieldName, element := range content.Elements {
 		if elementInstance, ok := element.(Element); ok {
-			preContentUpdateFuncs := elementInstance.PreContentUpdateFunctions()
-			for _, preContentUpdateFunc := range preContentUpdateFuncs {
-				element, err := preContentUpdateFunc(element.(Element))
+			if elementInstance.ChildElements() != nil {
+				element, err := handlePreContentCreateFunctionsOnElement(element.(Element))
 				if err != nil {
 					return Content{}, err
 				}
 				content.Elements[fieldName] = element
+			} else {
+				preContentCreateFuncs := element.(Element).PreContentCreateFunctions()
+				for _, preContentCreateFunc := range preContentCreateFuncs {
+					element, err := preContentCreateFunc()
+					if err != nil {
+						return Content{}, err
+					}
+					content.Elements[fieldName] = element
+				}
 			}
 		}
 	}
 	return content, nil
 }
 
-func handlePostContentUpdateFunctions(content Content) error {
-	for _, element := range content.Elements {
-		if elementInstance, ok := element.(Element); ok {
-			postContentUpdateFuncs := elementInstance.PostContentUpdateFunctions()
-			for _, postContentUpdateFunc := range postContentUpdateFuncs {
-				err := postContentUpdateFunc(element.(Element))
+func handlePreContentUpdateFunctionsOnElement(element Element) (Element, []PostContentUpdateFunc, error) {
+	totalPostContentUpdateFuncs := make([]PostContentUpdateFunc, 0)
+	if element.ChildElements() != nil {
+		childElements := element.ChildElements()
+		for key, childElement := range childElements {
+			if childElement.ChildElements() != nil {
+				updatedChildElement, postContentUpdateFuncs, err := handlePreContentUpdateFunctionsOnElement(childElement)
 				if err != nil {
-					logrus.Warn("post update field with error ", err)
+					return nil, nil, err
+				}
+				totalPostContentUpdateFuncs = append(totalPostContentUpdateFuncs, postContentUpdateFuncs...)
+				element.UpdateChildElement(key, updatedChildElement)
+			} else {
+				for _, preContentUpdateFunc := range childElement.PreContentUpdateFunctions() {
+					updatedChildElement, postContentUpdateFuncs, err := preContentUpdateFunc(childElement.(Element))
+					if err != nil {
+						return nil, nil, err
+					}
+					totalPostContentUpdateFuncs = append(totalPostContentUpdateFuncs, postContentUpdateFuncs...)
+					element.UpdateChildElement(key, updatedChildElement)
+				}
+			}
+		}
+		return element, totalPostContentUpdateFuncs, nil
+	} else {
+		return element, totalPostContentUpdateFuncs, nil
+	}
+}
+
+func handlePreContentUpdateFunctions(content Content) (Content, []PostContentUpdateFunc, error) {
+	totalPostContentUpdateFuncs := make([]PostContentUpdateFunc, 0)
+	for fieldName, element := range content.Elements {
+		if elementInstance, ok := element.(Element); ok {
+			if elementInstance.ChildElements() != nil {
+				element, postContentUpdateFuncs, err := handlePreContentUpdateFunctionsOnElement(element.(Element))
+				if err != nil {
+					return Content{}, nil, err
+				}
+				totalPostContentUpdateFuncs = append(totalPostContentUpdateFuncs, postContentUpdateFuncs...)
+				content.Elements[fieldName] = element
+			} else {
+				preContentUpdateFuncs := elementInstance.PreContentUpdateFunctions()
+				for _, preContentUpdateFunc := range preContentUpdateFuncs {
+					element, postContentUpdateFuncs, err := preContentUpdateFunc(element.(Element))
+					if err != nil {
+						return Content{}, nil, err
+					}
+					totalPostContentUpdateFuncs = append(totalPostContentUpdateFuncs, postContentUpdateFuncs...)
+					content.Elements[fieldName] = element
 				}
 			}
 		}
 	}
-	return nil
+	return content, totalPostContentUpdateFuncs, nil
 }
 
 func (service *contentService) createOrUpdate(record AcousticDataRecord, contentType string) (*ContentAutheringResponse, error) {
@@ -203,8 +263,12 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 					}
 				}
 			}
-			content, err := handlePreContentUpdateFunctions(updatedContent)
-			defer handlePostContentUpdateFunctions(*existingContent)
+			content, postUpdateContentFuncs, err := handlePreContentUpdateFunctions(updatedContent)
+			defer func() {
+				for _, postUpdateFunc := range postUpdateContentFuncs {
+					postUpdateFunc()
+				}
+			}()
 			if err != nil {
 				return nil, err
 			}
