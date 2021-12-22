@@ -87,12 +87,14 @@ func (element FileElement) Update(new Element) (Element, error) {
 func (element GroupElement) Update(new Element) (Element, error) {
 	newValue := new.(GroupElement)
 	for k, v := range element.Value {
-		updatedOldVal, err := v.(Element).Update(newValue.Value[k].(Element))
-		if err != nil {
-			return nil, err
-		}
-		if updatedOldVal != nil {
-			element.Value[k] = updatedOldVal
+		if newValue.Value[k] != nil {
+			updatedOldVal, err := v.(Element).Update(newValue.Value[k].(Element))
+			if err != nil {
+				return nil, err
+			}
+			if updatedOldVal != nil {
+				element.Value[k] = updatedOldVal
+			}
 		}
 	}
 	return element, nil
