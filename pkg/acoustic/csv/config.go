@@ -34,6 +34,7 @@ type ContentTypeMapping struct {
 	CsvRecordKey           string                `yaml:"csvRecordKey"`
 	Update                 bool                  `yaml:"update"`
 	CreateNonExistingItems bool                  `yaml:"createNonExistingItems"`
+	SearchOnLibrary        bool                  `yaml:"searchOnLibrary"`
 	SearchTerm             string                `yaml:"searchTerm"`
 	SearchKeys             []string              `yaml:"searchKeys"`
 	SearchType             string                `yaml:"searchType"`
@@ -82,6 +83,7 @@ type ContentFieldMapping struct {
 	RefContentTypeMapping ContentTypeMapping `yaml:"refContentTypeMapping"`
 	AlwaysNew             bool               `yaml:"alwaysNew"`
 	SearchTerm            string             `yaml:"searchTerm"`
+	SearchOnLibrary       bool               `yaml:"searchOnLibrary"`
 	SearchKeys            []string           `yaml:"searchKeys"`
 	// configuration related the column value in
 	ValueAsJSON bool   `yaml:"valueAsJSON"`
@@ -362,6 +364,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 				reference.SearchValues = append(reference.SearchValues, value)
 			}
 			reference.SearchTerm = contentFieldMapping.SearchTerm
+			reference.SearchOnLibrary = contentFieldMapping.SearchOnLibrary
 		} else {
 			dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
 			for _, fieldMapping := range contentFieldMapping.FieldMapping {

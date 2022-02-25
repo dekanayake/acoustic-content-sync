@@ -108,7 +108,7 @@ func (searchRequest SearchRequest) SearchTerm() string {
 }
 
 type SearchClient interface {
-	Search(libraryId string, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error)
+	Search(libraryId string, searchOnLibrary bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error)
 }
 
 type searchClient struct {
@@ -123,12 +123,14 @@ func NewSearchClient(acousticApiUrl string) SearchClient {
 	}
 }
 
-func (searchClient searchClient) Search(libraryId string, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error) {
+func (searchClient searchClient) Search(libraryId string, searchOnLibrary bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error) {
 	req := searchClient.c.NewRequest().SetResult(&SearchResponse{}).SetError(&ContentAuthoringErrorResponse{})
 	req.SetQueryParam("q", searchRequest.SearchTerm())
 	req.SetQueryParam("fl", "document:[json]")
 	queryParams := make([]string, 0)
-	queryParams = append(queryParams, "libraryId:(\""+libraryId+"\")")
+	if searchOnLibrary {
+		queryParams = append(queryParams, "libraryId:(\""+libraryId+"\")")
+	}
 	queryParams = append(queryParams, searchRequest.ContentTypesQuery())
 	queryParams = append(queryParams, searchRequest.AssetTypeQuery())
 	queryParams = append(queryParams, searchRequest.ClassificationQuery())

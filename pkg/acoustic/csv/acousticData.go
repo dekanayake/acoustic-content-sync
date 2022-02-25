@@ -62,6 +62,7 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 			Update:                 configTypeMapping.Update,
 			CreateNonExistingItems: configTypeMapping.CreateNonExistingItems,
 			SearchTerm:             configTypeMapping.SearchTerm,
+			SearchOnLibrary:        configTypeMapping.SearchOnLibrary,
 			SearchValues:           searchValues,
 			SearchKeys:             configTypeMapping.SearchKeys,
 			SearchType:             configTypeMapping.SearchType,

@@ -27,6 +27,7 @@ type AcousticDataRecord struct {
 	Update                 bool
 	CreateNonExistingItems bool
 	SearchTerm             string
+	SearchOnLibrary        bool
 	SearchValues           map[string]string
 	SearchKeys             []string
 	SearchType             string
@@ -55,14 +56,15 @@ type AcousticMultiGroup struct {
 }
 
 type AcousticReference struct {
-	SearchType   string
-	Type         string
-	AlwaysNew    bool
-	Data         []GenericData
-	SearchTerm   string
-	SearchValues []string
-	NameFields   []string
-	Tags         []string
+	SearchType      string
+	Type            string
+	AlwaysNew       bool
+	Data            []GenericData
+	SearchTerm      string
+	SearchOnLibrary bool
+	SearchValues    []string
+	NameFields      []string
+	Tags            []string
 }
 
 type AcousticFileAsset struct {
@@ -758,7 +760,7 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), referenceValue.SearchOnLibrary, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -797,7 +799,7 @@ func (element MultiReferenceElement) Convert(data interface{}) (Element, error) 
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
