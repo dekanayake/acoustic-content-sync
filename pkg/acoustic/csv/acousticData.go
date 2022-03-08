@@ -67,6 +67,10 @@ func Transform(contentType string, dataFeedPath string, configPath string) ([]ap
 			SearchKeys:             configTypeMapping.SearchKeys,
 			SearchType:             configTypeMapping.SearchType,
 			CSVRecordKey:           configTypeMapping.CsvRecordKey,
+			FilterRecords:          configTypeMapping.FilterRecords,
+			FilterFileLocation:     configTypeMapping.FilterFileLocation,
+			FilterType:             configTypeMapping.FilterType,
+			FilterColumns:          configTypeMapping.FilterColumns,
 		})
 	}
 	return acousticDataList, nil

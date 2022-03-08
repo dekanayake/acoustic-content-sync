@@ -57,7 +57,14 @@ func (element MultiTextElement) Update(new Element) (Element, error) {
 }
 
 func (element NumberElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	oldValue := element.Value
+	newValue := new.(NumberElement).Value
+	if oldValue != newValue {
+		element.Value = newValue
+		return element, nil
+	} else {
+		return nil, nil
+	}
 }
 
 func (element LinkElement) Update(new Element) (Element, error) {

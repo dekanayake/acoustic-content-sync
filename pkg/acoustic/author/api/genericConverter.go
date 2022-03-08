@@ -34,6 +34,11 @@ type AcousticDataRecord struct {
 	NameFields             []string
 	Values                 []GenericData
 	Tags                   []string
+	// This config allows to filter records in the data csv
+	FilterRecords      bool
+	FilterType         string
+	FilterColumns      []string
+	FilterFileLocation string
 }
 
 type GenericData struct {
@@ -171,6 +176,15 @@ func (acousticDataRecord AcousticDataRecord) CSVRecordKeyValue() string {
 		}).Map(func(columnValue GenericData) string {
 		return columnValue.Value.(string)
 	}).First().String()
+}
+
+func (acousticDataRecord AcousticDataRecord) GetValue(columnName string) interface{} {
+	return koazee.StreamOf(acousticDataRecord.Values).
+		Filter(func(columnValue GenericData) bool {
+			return columnValue.Name == columnName
+		}).Map(func(columnValue GenericData) interface{} {
+		return columnValue.Value
+	}).First().Val()
 }
 
 func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate() (string, error) {

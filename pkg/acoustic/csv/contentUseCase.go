@@ -6,6 +6,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	logruserror "github.com/dekanayake/acoustic-content-sync/pkg/logrus"
 	log "github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 	"github.com/wesovilabs/koazee"
 	"os"
 )
@@ -90,10 +91,48 @@ func NewContentUseCase(acousticAuthApiUrl string, acousticContentLib string) Con
 	}
 }
 
+func getFilterValues(fileLocationPath string, columns []string) ([]map[string]string, error) {
+	filterValuesFeed, err := LoadCSV(fileLocationPath)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	filterValues := make([]map[string]string, 0)
+	for ok := true; ok; ok = filterValuesFeed.HasNext() {
+		filterValueMap := make(map[string]string)
+		filterValueRecord := filterValuesFeed.Next()
+		for _, column := range columns {
+			filterValue, err := filterValueRecord.Get(column)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			filterValueMap[column] = filterValue
+			filterValues = append(filterValues, filterValueMap)
+		}
+	}
+	return filterValues, nil
+}
+
 func (contentUseCase *contentUseCase) CreateBatch(contentType string, dataFeedPath string, configPath string) (ContentCreationStatus, error) {
 	records, err := Transform(contentType, dataFeedPath, configPath)
 	if err != nil {
 		return ContentCreationStatus{}, errors.ErrorWithStack(err)
+	}
+	filterRecords := records[0].FilterRecords
+	if filterRecords {
+		filterValues, err := getFilterValues(records[0].FilterFileLocation, records[0].FilterColumns)
+		if err != nil {
+			return ContentCreationStatus{}, errors.ErrorWithStack(err)
+		}
+		records = funk.Filter(records, func(record api.AcousticDataRecord) bool {
+			return funk.Contains(filterValues, func(filterValueMap map[string]string) bool {
+				contains := true
+				for filterKey, filterValue := range filterValueMap {
+					value := record.GetValue(filterKey)
+					contains = contains && value != nil && value == filterValue
+				}
+				return contains
+			})
+		}).([]api.AcousticDataRecord)
 	}
 	failed := make([]ContentCreationFailedStatus, 0)
 	success := make([]ContentCreationSuccessStatus, 0)

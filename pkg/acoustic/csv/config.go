@@ -38,6 +38,11 @@ type ContentTypeMapping struct {
 	SearchTerm             string                `yaml:"searchTerm"`
 	SearchKeys             []string              `yaml:"searchKeys"`
 	SearchType             string                `yaml:"searchType"`
+	// This config allows to filter records in the data csv
+	FilterRecords      bool     `yaml:"filterRecords"`
+	FilterType         string   `yaml:"filterType"`
+	FilterColumns      []string `yaml:"filterColumns"`
+	FilterFileLocation string   `yaml:"filterFileLocation"`
 }
 
 type CategoryMapping struct {
