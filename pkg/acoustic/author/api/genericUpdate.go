@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	"github.com/thoas/go-funk"
 )
 
 func (element TextElement) Update(new Element) (Element, error) {
@@ -72,7 +73,12 @@ func (element LinkElement) Update(new Element) (Element, error) {
 }
 
 func (element CategoryElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	oldCatIds := element.CategoryIds
+	newElement := new.(CategoryElement)
+	newCatIds := newElement.CategoryIds
+	updatedCatIds := append(newCatIds, oldCatIds...)
+	newElement.CategoryIds = funk.UniqString(updatedCatIds)
+	return newElement, nil
 }
 
 func (element CategoryPartElement) Update(new Element) (Element, error) {
