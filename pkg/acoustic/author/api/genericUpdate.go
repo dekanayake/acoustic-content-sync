@@ -69,7 +69,25 @@ func (element NumberElement) Update(new Element) (Element, error) {
 }
 
 func (element LinkElement) Update(new Element) (Element, error) {
-	return nil, errors.ErrorMessageWithStack("not implemented")
+	oldLinkUrl := element.LinkURL
+	newLinkUrl := new.(LinkElement).LinkURL
+	if oldLinkUrl != newLinkUrl {
+		element.LinkURL = newLinkUrl
+	}
+
+	oldLinkText := element.LinkText
+	newLinkText := new.(LinkElement).LinkText
+	if oldLinkText != newLinkText {
+		element.LinkText = newLinkText
+	}
+
+	oldLinkTitle := element.LinkTitle
+	newLinkTitle := new.(LinkElement).LinkTitle
+	if oldLinkTitle != newLinkTitle {
+		element.LinkTitle = newLinkTitle
+	}
+
+	return element, nil
 }
 
 func (element CategoryElement) Update(new Element) (Element, error) {

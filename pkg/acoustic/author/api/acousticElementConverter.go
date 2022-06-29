@@ -78,6 +78,27 @@ var booleanElementConverter = acousticElementConvertor{
 	}),
 }
 
+var linkElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldLink)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonLink, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := LinkElement{}
+		err = json.Unmarshal(jsonLink, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
 var numberElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
 		return fieldType == AcousticFieldType(AcousticFieldNumber)
@@ -253,6 +274,7 @@ func init() {
 		fileElementConverter,
 		imageElementConverter,
 		categoryElementConverter,
+		linkElementConverter,
 	}
 }
 
