@@ -33,11 +33,15 @@ type ContentTypeMapping struct {
 	Tags                   []string              `yaml:"tags"`
 	CsvRecordKey           string                `yaml:"csvRecordKey"`
 	Update                 bool                  `yaml:"update"`
+	FeedType               api.FeedType          `yaml:"feedType"`
 	CreateNonExistingItems bool                  `yaml:"createNonExistingItems"`
 	SearchOnLibrary        bool                  `yaml:"searchOnLibrary"`
 	SearchTerm             string                `yaml:"searchTerm"`
+	SearchTerms            map[string]string     `yaml:"searchTerms"`
 	SearchKeys             []string              `yaml:"searchKeys"`
 	SearchType             string                `yaml:"searchType"`
+	SearchOnDeliveryAPI    bool                  `yaml:"searchOnDeliveryAPI"`
+	PaginationRows         int                   `yaml:"paginationRows"`
 	// This config allows to filter records in the data csv
 	FilterRecords      bool     `yaml:"filterRecords"`
 	FilterType         string   `yaml:"filterType"`

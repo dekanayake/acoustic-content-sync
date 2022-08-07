@@ -59,13 +59,13 @@ func (d deleteService) Delete(libraryId string, deleteMappingName string, config
 	start := 0
 	rows := 100
 	for {
-		searchResponse, err := d.searchClient.Search(libraryId, true, searchRequest, api.Pagination{Start: start, Rows: rows})
+		searchResponse, err := d.searchClient.Search(libraryId, true, false, searchRequest, api.Pagination{Start: start, Rows: rows})
 		if err != nil {
 			return errors.ErrorWithStack(err)
 		}
 		if searchResponse.IsCountLessThanStart() {
 			start, rows = searchResponse.NextPagination()
-			searchResponse, err = d.searchClient.Search(libraryId, true, searchRequest, api.Pagination{Start: start, Rows: rows})
+			searchResponse, err = d.searchClient.Search(libraryId, true, false, searchRequest, api.Pagination{Start: start, Rows: rows})
 			if err != nil {
 				return errors.ErrorWithStack(err)
 			}

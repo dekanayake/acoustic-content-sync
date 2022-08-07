@@ -203,7 +203,7 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 			ContentTypes:   []string{record.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), record.SearchOnLibrary, searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), record.SearchOnLibrary, record.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +232,7 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 			ContentTypes:   []string{record.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), record.SearchOnLibrary, searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), record.SearchOnLibrary, record.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, err
 		}

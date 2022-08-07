@@ -28,6 +28,7 @@ type AcousticDataRecord struct {
 	CreateNonExistingItems bool
 	SearchTerm             string
 	SearchOnLibrary        bool
+	SearchOnDeliveryAPI    bool
 	SearchValues           map[string]string
 	SearchKeys             []string
 	SearchType             string
@@ -774,7 +775,7 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), referenceValue.SearchOnLibrary, searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), referenceValue.SearchOnLibrary, false, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -813,7 +814,7 @@ func (element MultiReferenceElement) Convert(data interface{}) (Element, error) 
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, false, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}

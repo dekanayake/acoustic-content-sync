@@ -28,10 +28,22 @@ type Document struct {
 
 type SearchRequest struct {
 	Term           string
+	Terms          map[string]string
 	ContentTypes   []string
 	CriteriaList   []FilterCriteria
 	Classification string
 	AssetType      AssetType
+}
+
+func NewSearchRequest(term string, terms map[string]string) SearchRequest {
+	request := SearchRequest{}
+	if term != "" {
+		request.Term = term
+	}
+	if terms != nil {
+		request.Terms = terms
+	}
+	return request
 }
 
 type FilterCriteria interface {
@@ -108,7 +120,7 @@ func (searchRequest SearchRequest) SearchTerm() string {
 }
 
 type SearchClient interface {
-	Search(libraryId string, searchOnLibrary bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error)
+	Search(libraryId string, searchOnLibrary bool, searchOnDeliveryAPI bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error)
 }
 
 type searchClient struct {
@@ -123,9 +135,17 @@ func NewSearchClient(acousticApiUrl string) SearchClient {
 	}
 }
 
-func (searchClient searchClient) Search(libraryId string, searchOnLibrary bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error) {
+func (searchClient searchClient) Search(libraryId string, searchOnLibrary bool, searchOnDeliveryAPI bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error) {
 	req := searchClient.c.NewRequest().SetResult(&SearchResponse{}).SetError(&ContentAuthoringErrorResponse{})
-	req.SetQueryParam("q", searchRequest.SearchTerm())
+	if searchRequest.Term != "" {
+		req.SetQueryParam("q", searchRequest.Term)
+	} else if searchRequest.Terms != nil {
+		for termQueryParam, term := range searchRequest.Terms {
+			req.SetQueryParam(termQueryParam, term)
+		}
+	} else {
+		req.SetQueryParam("q", "*")
+	}
 	req.SetQueryParam("fl", "document:[json]")
 	queryParams := make([]string, 0)
 	if searchOnLibrary {
@@ -148,7 +168,13 @@ func (searchClient searchClient) Search(libraryId string, searchOnLibrary bool, 
 	req.SetQueryParam("rows", strconv.Itoa(pagination.Rows))
 	req.SetQueryParam("start", strconv.Itoa(pagination.Start))
 
-	if resp, err := req.Get(searchClient.acousticApiUrl + "/authoring/v1/search"); err != nil {
+	searchApi := searchClient.acousticApiUrl
+	if searchOnDeliveryAPI {
+		searchApi += "/delivery/v1/search"
+	} else {
+		searchApi += "/authoring/v1/search"
+	}
+	if resp, err := req.Get(searchApi); err != nil {
 		return SearchResponse{}, errors.ErrorWithStack(err)
 	} else if resp.IsSuccess() {
 		searchResponse := *resp.Result().(*SearchResponse)

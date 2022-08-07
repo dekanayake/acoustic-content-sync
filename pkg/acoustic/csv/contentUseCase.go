@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"encoding/csv"
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
@@ -13,6 +14,7 @@ import (
 
 type ContentUseCase interface {
 	CreateBatch(contentType string, dataFeedPath string, configPath string) (ContentCreationStatus, error)
+	ReadBatch(contentType string, dataFeedPath string, configPath string) error
 }
 
 type ContentCreationStatus struct {
@@ -156,4 +158,71 @@ func (contentUseCase *contentUseCase) CreateBatch(contentType string, dataFeedPa
 			}
 		}).Do()
 	return ContentCreationStatus{Success: success, Failed: failed}, nil
+}
+
+func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath string, configPath string) error {
+	csvFile, err := os.Create(dataFeedPath)
+	defer csvFile.Close()
+	if err != nil {
+		return errors.ErrorWithStack(err)
+	}
+	csvFileWriter := csv.NewWriter(csvFile)
+	defer csvFileWriter.Flush()
+
+	config, err := InitConfig(configPath)
+	if err != nil {
+		return errors.ErrorWithStack(err)
+	}
+	configTypeMapping, err := config.GetContentType(contentType)
+	if err != nil {
+		return errors.ErrorWithStack(err)
+	}
+	acousticFields := configTypeMapping.GetAcousticFields()
+	rowHeaders := make([]string, 0)
+	for _, acousticField := range acousticFields {
+		rowHeaders = append(rowHeaders, acousticField)
+	}
+	if err := csvFileWriter.Write(rowHeaders); err != nil {
+		return errors.ErrorWithStack(err)
+	}
+
+	searchRequest := api.NewSearchRequest(configTypeMapping.SearchTerm, configTypeMapping.SearchTerms)
+	searchRequest.ContentTypes = []string{configTypeMapping.SearchType}
+	searchRequest.Classification = "content"
+
+	rows := 1
+	if configTypeMapping.PaginationRows > 0 {
+		rows = configTypeMapping.PaginationRows
+	}
+	searchResponse, err := api.NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), configTypeMapping.SearchOnLibrary, configTypeMapping.SearchOnDeliveryAPI, searchRequest, api.Pagination{Start: 0, Rows: rows})
+	if err != nil {
+		return errors.ErrorWithStack(err)
+	}
+	contentClient := api.NewContentClient(env.AcousticAPIUrl())
+	if len(searchResponse.Documents) > 0 {
+		for _, document := range searchResponse.Documents {
+			contentId := document.Document.ID
+			existingContent, err := contentClient.Get(contentId)
+			if err != nil {
+				return errors.ErrorWithStack(err)
+			}
+			row := make([]string, 0)
+			for _, acousticField := range acousticFields {
+				if element, ok := existingContent.Elements[acousticField]; ok {
+					existingElement, err := api.Convert(element.(map[string]interface{}))
+					value, err := existingElement.ToCSV()
+					if err != nil {
+						return errors.ErrorWithStack(err)
+					}
+					row = append(row, value)
+				}
+			}
+			if err := csvFileWriter.Write(row); err != nil {
+				return errors.ErrorWithStack(err)
+			}
+		}
+	} else {
+		return errors.ErrorMessageWithStack("No records for the match with the search term")
+	}
+	return nil
 }

@@ -111,6 +111,7 @@ type Element interface {
 	PreContentUpdateFunctions() []PreContentUpdateFunc
 	ChildElements() map[string]Element
 	UpdateChildElement(key string, updatedElement Element) error
+	ToCSV() (string, error)
 }
 
 type element struct {
@@ -371,3 +372,10 @@ func Build(fieldType string) (Element, error) {
 		return nil, errors.ErrorMessageWithStack("No element found for property type " + fieldType)
 	}
 }
+
+type FeedType string
+
+const (
+	CSV      FeedType = "CSV"
+	ACOUSTIC FeedType = "Acoustic"
+)
