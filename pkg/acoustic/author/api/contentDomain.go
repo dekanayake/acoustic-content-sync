@@ -4,6 +4,15 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 )
 
+type Operation string
+
+const (
+	DELETE            Operation = "delete"
+	UPDATE            Operation = "update"
+	CREATE            Operation = "create"
+	DEFAULT_OPERATION Operation = "-"
+)
+
 type AssetType string
 
 const (
@@ -112,12 +121,14 @@ type Element interface {
 	ChildElements() map[string]Element
 	UpdateChildElement(key string, updatedElement Element) error
 	ToCSV() (string, error)
+	GetOperation() Operation
 }
 
 type element struct {
 	ElementType                  AcousticFieldType      `json:"elementType"`
 	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
 	PreContentUpdateFunctionList []PreContentUpdateFunc `json:"-"`
+	Operation                    Operation              `json:"-"`
 }
 
 type TextElement struct {
@@ -139,6 +150,10 @@ func (element element) PreContentUpdateFunctions() []PreContentUpdateFunc {
 	} else {
 		return element.PreContentUpdateFunctionList
 	}
+}
+
+func (element element) GetOperation() Operation {
+	return element.Operation
 }
 
 func (element element) ChildElements() map[string]Element {

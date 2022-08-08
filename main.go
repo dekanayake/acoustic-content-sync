@@ -145,6 +145,102 @@ func threed_materials_configuration(feedName string, configName string) {
 	}
 }
 
+func threed_tiles_update(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	//
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	status, err := contentService.CreateBatch("ef48246d-a3e4-4cf7-aee7-32a19d9afd20", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func threed_materials_configuration_update(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	//
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	status, err := contentService.CreateBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func threed_materials_review(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner materials glb", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "af32c812-305d-4cea-9136-dd5becc10b1d")
+	status, err := contentService.CreateBatch("07198b81-3dc0-4131-9f4c-17f3d1640049", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func threed_materials_configuration_review(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	//
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "af32c812-305d-4cea-9136-dd5becc10b1d")
+	status, err := contentService.CreateBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
 func custom_search(feedName string, configName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
@@ -293,6 +389,24 @@ func badges(feedName string, configName string) {
 
 }
 
+func readCustomSearch(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "970266a6-c90c-4cc9-8bd6-e5867920e5ce")
+	err := contentService.ReadBatch("945ba2f8-5393-41f3-8504-7ea6e5086ed8", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
 //
 //func sliBanners(feedName string, configName string) {
 //	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
@@ -395,23 +509,33 @@ func badges(feedName string, configName string) {
 //}
 
 func main() {
-	//feedName := "210906_Metadata_materials.csv"
+	//feedName := "20220804_materials.csv"
 	//configName := "config_3d_product_material.yaml"
 	////delete_reece(configName)
 	//threed_materials(feedName, configName)
 
-	//feedName := "210906_Metadata_acoustic.csv"
+	//feedName := "20220804_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
 
-	//feedName := "210906_Metadata_materials.csv"
+	//feedName := "20220718_Metadata_acoustic.csv"
+	//configName := "config_3d_product_configurator_update.yaml"
+	////delete_reece(configName)
+	//threed_materials_configuration_update(feedName, configName)
+
+	//feedName := "20220607_metadata.csv"
 	//configName := "config_3d_product_material_update.yaml"
 	////delete_reece(configName)
 	//threed_materials_update(feedName, configName)
 
-	feedName := "gsdu.csv"
-	configName := "config_search_config.yaml"
+	//feedName := "20220808_Metadata_acoustic.csv"
+	//configName := "config_3d_product_configurator.yaml"
+	////delete_reece(configName)
+	//threed_materials_configuration(feedName, configName)
+
+	feedName := "new_arrivals_2022_08.csv"
+	configName := "custom_search.yaml"
 	//delete_reece(configName)
 	custom_search(feedName, configName)
 
@@ -419,5 +543,25 @@ func main() {
 	//configName := "config_customorder_nz_product_badges.yaml"
 	////delete_reece(configName)
 	//badges(feedName, configName)
+
+	//feedName := "20220722_materials.csv"
+	//configName := "config_3d_product_material_review.yaml"
+	////delete_reece(configName)
+	//threed_materials_review(feedName, configName)
+
+	//feedName := "20220808_Metadata_acoustic.csv"
+	//configName := "config_3d_product_configurator_review.yaml"
+	////delete_reece(configName)
+	//threed_materials_configuration_review(feedName, configName)
+
+	//feedName := "National Tiles - 3d Planner - Data.csv"
+	//configName := "3d_planner_tiles_utm_update.yaml"
+	////delete_reece(configName)
+	//threed_tiles_update(feedName, configName)
+
+	//feedName := "new_arrivals_to_delete.csv"
+	//configName := "custom_search_read.yaml"
+	////delete_reece(configName)
+	//readCustomSearch(feedName, configName)
 
 }

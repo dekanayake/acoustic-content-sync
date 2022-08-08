@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/thoas/go-funk"
+	"golang.org/x/exp/slices"
 )
 
 func (element TextElement) Update(new Element) (Element, error) {
@@ -143,7 +144,17 @@ func (element ReferenceElement) Update(new Element) (Element, error) {
 func (element MultiReferenceElement) Update(new Element) (Element, error) {
 	oldValues := element.Values
 	newValues := new.(MultiReferenceElement).Values
-	oldValues = append(oldValues, newValues...)
+	if new.GetOperation() == DELETE {
+		tempValues := make([]ReferenceValue, 0)
+		for _, oldValue := range oldValues {
+			if !slices.Contains(newValues, oldValue) {
+				tempValues = append(tempValues, oldValue)
+			}
+		}
+		oldValues = tempValues
+	} else {
+		oldValues = append(oldValues, newValues...)
+	}
 
 	allKeys := make(map[string]bool)
 	updatedList := []ReferenceValue{}

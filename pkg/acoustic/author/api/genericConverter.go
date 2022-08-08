@@ -71,6 +71,7 @@ type AcousticReference struct {
 	SearchValues    []string
 	NameFields      []string
 	Tags            []string
+	Operation       Operation
 }
 
 type AcousticFileAsset struct {
@@ -826,5 +827,6 @@ func (element MultiReferenceElement) Convert(data interface{}) (Element, error) 
 	values := make([]ReferenceValue, 0, 1)
 	values = append(values, value)
 	element.Values = values
+	element.Operation = referenceValue.Operation
 	return element, nil
 }

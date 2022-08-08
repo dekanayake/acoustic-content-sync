@@ -83,6 +83,7 @@ type ContentFieldMapping struct {
 	ImageWidth            uint                 `yaml:"imageWidth"`
 	ImageHeight           uint                 `yaml:"imageHeight"`
 	EnforceImageDimension bool                 `yaml:"enforceImageDimension"`
+	Operation             api.Operation        `yaml:"operation"`
 	// configuration related to group
 	Type         string                `yaml:"type"`
 	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
@@ -356,6 +357,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		reference := api.AcousticReference{}
 		reference.Type = contentFieldMapping.RefContentTypeMapping.Type
 		reference.AlwaysNew = contentFieldMapping.AlwaysNew
+		reference.Operation = contentFieldMapping.Operation
 		reference.NameFields = contentFieldMapping.RefContentTypeMapping.Name
 		reference.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
 		reference.SearchType = contentFieldMapping.SearchType
