@@ -72,7 +72,7 @@ func (searchResponse SearchResponse) NextPagination() (int, int) {
 	if searchResponse.Count <= searchResponse.Start {
 		return 0, searchResponse.Count
 	} else {
-		start := searchResponse.Start + searchResponse.Rows + 1
+		start := searchResponse.Start + searchResponse.Rows
 		return start, searchResponse.Rows
 	}
 

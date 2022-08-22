@@ -190,17 +190,28 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 	searchRequest.ContentTypes = []string{configTypeMapping.SearchType}
 	searchRequest.Classification = "content"
 
-	rows := 1
+	start := 0
+	rows := 100
 	if configTypeMapping.PaginationRows > 0 {
 		rows = configTypeMapping.PaginationRows
 	}
-	searchResponse, err := api.NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), configTypeMapping.SearchOnLibrary, configTypeMapping.SearchOnDeliveryAPI, searchRequest, api.Pagination{Start: 0, Rows: rows})
-	if err != nil {
-		return errors.ErrorWithStack(err)
+	documents := make([]api.DocumentItem, 0)
+
+	for {
+		searchResponse, err := api.NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), configTypeMapping.SearchOnLibrary, configTypeMapping.SearchOnDeliveryAPI, searchRequest, api.Pagination{Start: start, Rows: rows})
+		if err != nil {
+			return errors.ErrorWithStack(err)
+		}
+		documents = append(documents, searchResponse.Documents...)
+		if !searchResponse.HasNext() {
+			break
+		} else {
+			start, rows = searchResponse.NextPagination()
+		}
 	}
 	contentClient := api.NewContentClient(env.AcousticAPIUrl())
-	if len(searchResponse.Documents) > 0 {
-		for _, document := range searchResponse.Documents {
+	if len(documents) > 0 {
+		for _, document := range documents {
 			contentId := document.Document.ID
 			existingContent, err := contentClient.Get(contentId)
 			if err != nil {
