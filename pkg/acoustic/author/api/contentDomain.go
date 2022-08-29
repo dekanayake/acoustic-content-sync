@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/csv"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 )
 
@@ -113,6 +114,28 @@ type PreContentCreateFunc func() (Element, error)
 type PreContentUpdateFunc func(updatedElement Element) (Element, []PostContentUpdateFunc, error)
 type PostContentUpdateFunc func() error
 
+type CSVValues struct {
+	Value       string
+	HasChildren bool
+	ChildValues map[string]CSVValues
+}
+
+func (csvValues CSVValues) GetValue(fieldName string) (string, error) {
+	if !csvValues.HasChildren {
+		if csvValues.Value != "" {
+			return csvValues.Value, nil
+		}
+	} else {
+		for _, childValue := range csvValues.ChildValues {
+			val, _ := childValue.GetValue(fieldName)
+			if val != "" {
+				return val, nil
+			}
+		}
+	}
+	return "", errors.ErrorMessageWithStack("no value for the field name :" + fieldName)
+}
+
 type Element interface {
 	Convert(data interface{}) (Element, error)
 	Update(new Element) (Element, error)
@@ -120,7 +143,7 @@ type Element interface {
 	PreContentUpdateFunctions() []PreContentUpdateFunc
 	ChildElements() map[string]Element
 	UpdateChildElement(key string, updatedElement Element) error
-	ToCSV() (string, error)
+	ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error)
 	GetOperation() Operation
 }
 
@@ -203,6 +226,7 @@ type DateElement struct {
 
 type CategoryElement struct {
 	CategoryIds []string `json:"categoryIds"`
+	Categories  []string `json:"categories"`
 	element
 }
 

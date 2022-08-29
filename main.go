@@ -407,6 +407,42 @@ func readCustomSearch(feedName string, configName string) {
 
 }
 
+func readTiles(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	err := contentService.ReadBatch("ef48246d-a3e4-4cf7-aee7-32a19d9afd20", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
+func read3dProductConfigurator(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
+	err := contentService.ReadBatch("6972fdb3-f431-4a8b-81f5-95b34148f616", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
 //
 //func sliBanners(feedName string, configName string) {
 //	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
@@ -509,12 +545,12 @@ func readCustomSearch(feedName string, configName string) {
 //}
 
 func main() {
-	//feedName := "20220804_materials.csv"
+	//feedName := "20220818_materials.csv"
 	//configName := "config_3d_product_material.yaml"
 	////delete_reece(configName)
 	//threed_materials(feedName, configName)
 
-	//feedName := "20220804_Metadata_acoustic.csv"
+	//feedName := "20220818_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
@@ -534,22 +570,22 @@ func main() {
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
 
-	feedName := "new_arrivals_2022_08.csv"
-	configName := "custom_search.yaml"
-	//delete_reece(configName)
-	custom_search(feedName, configName)
+	//feedName := "new_arrivals_2022_08.csv"
+	//configName := "custom_search.yaml"
+	////delete_reece(configName)
+	//custom_search(feedName, configName)
 
 	//feedName := "Custom order tag - New Release Products for NZ Website.csv"
 	//configName := "config_customorder_nz_product_badges.yaml"
 	////delete_reece(configName)
 	//badges(feedName, configName)
 
-	//feedName := "20220722_materials.csv"
+	//feedName := "20220816_materials.csv"
 	//configName := "config_3d_product_material_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_review(feedName, configName)
 
-	//feedName := "20220808_Metadata_acoustic.csv"
+	//feedName := "20220816_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration_review(feedName, configName)
@@ -563,5 +599,15 @@ func main() {
 	//configName := "custom_search_read.yaml"
 	////delete_reece(configName)
 	//readCustomSearch(feedName, configName)
+
+	feedName := "tiles_in_acoustic_20220829.csv"
+	configName := "3d_planner_tiles_read.yaml"
+	//delete_reece(configName)
+	readTiles(feedName, configName)
+
+	//feedName := "3d_product_configurations_to_update.csv"
+	//configName := "config_3d_product_configurator_read.yaml"
+	////delete_reece(configName)
+	//read3dProductConfigurator(feedName, configName)
 
 }

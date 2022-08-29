@@ -26,6 +26,10 @@ func AcousticAuthUrl() string {
 	return GetOrPanic("AcousticAuthURL")
 }
 
+func AcousticDomain() string {
+	return GetOrPanic("AcousticDomain")
+}
+
 func AcousticAPIUrl() string {
 	return GetOrPanic("AcousticAPIURL")
 }

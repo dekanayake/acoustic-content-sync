@@ -449,6 +449,31 @@ func (csvContentTypesMapping *ContentTypesMapping) GetContentTypeMapping(content
 	}
 }
 
+func (contentFieldMapping ContentFieldMapping) GetAllChildCSVFields() ([]string, error) {
+	childFields := make([]string, 0)
+	if contentFieldMapping.FieldMapping != nil {
+		for _, childFieldMapping := range contentFieldMapping.FieldMapping {
+			childFields = append(childFields, childFieldMapping.CsvProperty)
+			childFieldsOfChildField, err := childFieldMapping.GetAllChildCSVFields()
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			childFields = append(childFields, childFieldsOfChildField...)
+		}
+
+	}
+	return childFields, nil
+}
+
+func (contentFieldMapping ContentFieldMapping) GetChildFieldMapping(acousticField string) *ContentFieldMapping {
+	for _, fieldMapping := range contentFieldMapping.FieldMapping {
+		if fieldMapping.CsvProperty == acousticField {
+			return &fieldMapping
+		}
+	}
+	return nil
+}
+
 func (csvContentTypeMapping *ContentTypeMapping) GetFieldMappingByAcousticField(acousticField string) (*ContentFieldMapping, error) {
 	fieldMapping := koazee.StreamOf(csvContentTypeMapping.FieldMapping).
 		Filter(func(contentFieldMapping ContentFieldMapping) bool {

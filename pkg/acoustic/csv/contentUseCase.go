@@ -10,6 +10,7 @@ import (
 	"github.com/thoas/go-funk"
 	"github.com/wesovilabs/koazee"
 	"os"
+	"sort"
 )
 
 type ContentUseCase interface {
@@ -38,6 +39,11 @@ type contentUseCase struct {
 	acousticAuthApiUrl string
 	acousticContentLib string
 	contentService     api.ContentService
+}
+
+type csvColumnValue struct {
+	Index int8
+	Value string
 }
 
 func (contentCreationStatus ContentCreationStatus) TotalCount() int {
@@ -179,8 +185,27 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 	}
 	acousticFields := configTypeMapping.GetAcousticFields()
 	rowHeaders := make([]string, 0)
+	rowHeaderIndexMap := make(map[string]int8, 0)
+	rowHeaderIndex := 0
 	for _, acousticField := range acousticFields {
+		fieldMapping, err := configTypeMapping.GetFieldMappingByAcousticField(acousticField)
+		if err != nil {
+			return errors.ErrorWithStack(err)
+		}
+
 		rowHeaders = append(rowHeaders, acousticField)
+		rowHeaderIndex = rowHeaderIndex + 1
+		rowHeaderIndexMap[acousticField] = int8(rowHeaderIndex)
+		childCsvFields, err := fieldMapping.GetAllChildCSVFields()
+		if err != nil {
+			return errors.ErrorWithStack(err)
+		}
+
+		for _, childField := range childCsvFields {
+			rowHeaders = append(rowHeaders, childField)
+			rowHeaderIndex = rowHeaderIndex + 1
+			rowHeaderIndexMap[acousticField] = int8(rowHeaderIndex)
+		}
 	}
 	if err := csvFileWriter.Write(rowHeaders); err != nil {
 		return errors.ErrorWithStack(err)
@@ -217,18 +242,38 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 			if err != nil {
 				return errors.ErrorWithStack(err)
 			}
-			row := make([]string, 0)
+			row := make([]csvColumnValue, 0)
 			for _, acousticField := range acousticFields {
 				if element, ok := existingContent.Elements[acousticField]; ok {
-					existingElement, err := api.Convert(element.(map[string]interface{}))
-					value, err := existingElement.ToCSV()
+
+					fieldConfig, err := configTypeMapping.GetFieldMappingByAcousticField(acousticField)
 					if err != nil {
 						return errors.ErrorWithStack(err)
 					}
-					row = append(row, value)
+					existingElement, err := api.Convert(element.(map[string]interface{}))
+					value, err := existingElement.ToCSV(fieldConfig)
+					if err != nil {
+						return errors.ErrorWithStack(err)
+					}
+					fieldVal, err := value.GetValue(acousticField)
+					if err != nil {
+						return errors.ErrorWithStack(err)
+					}
+					row = append(row, csvColumnValue{
+						Value: fieldVal,
+						Index: rowHeaderIndexMap[acousticField],
+					})
+
 				}
 			}
-			if err := csvFileWriter.Write(row); err != nil {
+			sort.SliceStable(row, func(i, j int) bool {
+				return row[i].Index < row[j].Index
+			})
+			rowInString := make([]string, 0, len(row))
+			for _, columnVal := range row {
+				rowInString = append(rowInString, columnVal.Value)
+			}
+			if err := csvFileWriter.Write(rowInString); err != nil {
 				return errors.ErrorWithStack(err)
 			}
 		}
