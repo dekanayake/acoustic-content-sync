@@ -119,24 +119,28 @@ type CSVValues struct {
 	ChildValues map[string]CSVValues
 }
 
-func (csvValues CSVValues) hasChildren() bool {
+func (csvValues *CSVValues) hasChildren() bool {
 	return len(csvValues.ChildValues) > 0
 }
 
-func (csvValues CSVValues) GetValue(fieldName string) (string, error) {
+func (csvValues *CSVValues) GetValue(fieldName string) string {
 	if !csvValues.hasChildren() {
 		if csvValues.Value != "" {
-			return csvValues.Value, nil
+			return csvValues.Value
 		}
 	} else {
-		for _, childValue := range csvValues.ChildValues {
-			val, _ := childValue.GetValue(fieldName)
-			if val != "" {
-				return val, nil
+		if childValue, ok := csvValues.ChildValues[fieldName]; ok {
+			return childValue.GetValue(fieldName)
+		} else {
+			for _, childValue := range csvValues.ChildValues {
+				val := childValue.GetValue(fieldName)
+				if val != "" {
+					return val
+				}
 			}
 		}
 	}
-	return "", errors.ErrorMessageWithStack("no value for the field name :" + fieldName)
+	return ""
 }
 
 type Element interface {

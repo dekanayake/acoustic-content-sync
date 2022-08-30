@@ -514,7 +514,7 @@ type AcousticField struct {
 	Child *AcousticField
 }
 
-func (acousticField AcousticField) GetLeaf() string {
+func (acousticField *AcousticField) GetLeaf() string {
 	if acousticField.Child != nil {
 		return acousticField.Child.GetLeaf()
 	} else {

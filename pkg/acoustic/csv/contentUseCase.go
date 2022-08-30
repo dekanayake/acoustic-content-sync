@@ -261,10 +261,8 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 					if err != nil {
 						return errors.ErrorWithStack(err)
 					}
-					fieldVal, err := value.GetValue(mappedAcousticField.GetLeaf())
-					if err != nil {
-						return errors.ErrorWithStack(err)
-					}
+					fieldVal := value.GetValue(mappedAcousticField.GetLeaf())
+					log.Info(" csv field : " + csvField + ", value : " + fieldVal)
 					row = append(row, csvColumnValue{
 						Value: fieldVal,
 						Index: rowHeaderIndexMap[csvField],
