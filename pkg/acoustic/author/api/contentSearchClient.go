@@ -21,9 +21,10 @@ type DocumentItem struct {
 }
 
 type Document struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID       string                 `json:"id"`
+	Name     string                 `json:"name"`
+	Status   string                 `json:"status"`
+	Elements map[string]interface{} `json:"elements"`
 }
 
 type SearchRequest struct {

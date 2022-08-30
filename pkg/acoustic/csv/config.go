@@ -465,13 +465,20 @@ func (contentFieldMapping ContentFieldMapping) GetAllChildCSVFields() ([]string,
 	return childFields, nil
 }
 
-func (contentFieldMapping ContentFieldMapping) GetChildFieldMapping(acousticField string) *ContentFieldMapping {
-	for _, fieldMapping := range contentFieldMapping.FieldMapping {
-		if fieldMapping.CsvProperty == acousticField {
-			return &fieldMapping
+func (contentFieldMapping ContentFieldMapping) GetAcousticChildFields() (map[string]interface{}, error) {
+	if contentFieldMapping.FieldMapping != nil {
+		childFields := make(map[string]interface{}, 0)
+		for _, childFieldMapping := range contentFieldMapping.FieldMapping {
+			childFieldsOfChildField, err := childFieldMapping.GetAcousticChildFields()
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			childFields[childFieldMapping.AcousticProperty] = childFieldsOfChildField
 		}
+		return childFields, nil
+	} else {
+		return nil, nil
 	}
-	return nil
 }
 
 func (csvContentTypeMapping *ContentTypeMapping) GetFieldMappingByAcousticField(acousticField string) (*ContentFieldMapping, error) {
@@ -494,6 +501,99 @@ func (csvContentTypeMapping *ContentTypeMapping) GetAcousticFields() []string {
 			return contentFieldMapping.AcousticProperty
 		}).
 		Out().Val().([]string)
+}
+
+type CSVToAcousticFieldMapping struct {
+	CSVField           string
+	AcousticField      string
+	ChildFieldMappings []CSVToAcousticFieldMapping
+}
+
+type AcousticField struct {
+	Name  string
+	Child *AcousticField
+}
+
+func (acousticField AcousticField) GetLeaf() string {
+	if acousticField.Child != nil {
+		return acousticField.Child.GetLeaf()
+	} else {
+		return acousticField.Name
+	}
+}
+
+func (csvToAcousticFieldMapping *CSVToAcousticFieldMapping) HasChildren() bool {
+	return csvToAcousticFieldMapping.CSVField == "" && len(csvToAcousticFieldMapping.ChildFieldMappings) > 0
+}
+
+func (csvToAcousticFieldMapping *CSVToAcousticFieldMapping) AllChildCSVFields() []string {
+	allChildCSVFields := make([]string, 0)
+	if csvToAcousticFieldMapping.HasChildren() {
+		for _, childFieldMapping := range csvToAcousticFieldMapping.ChildFieldMappings {
+			if childFieldMapping.CSVField != "" {
+				allChildCSVFields = append(allChildCSVFields, childFieldMapping.CSVField)
+			}
+			allChildCSVFields = append(allChildCSVFields, childFieldMapping.AllChildCSVFields()...)
+		}
+	}
+	return allChildCSVFields
+}
+
+func GetAcousticField(csvToAcousticFieldMappings []CSVToAcousticFieldMapping, csvField string) (*AcousticField, error) {
+	for _, mapping := range csvToAcousticFieldMappings {
+		mappedAcousticField := mapping.getAcousticField(csvField)
+		if mappedAcousticField != nil {
+			return mappedAcousticField, nil
+		}
+	}
+	return nil, errors.ErrorMessageWithStack("No matching acoustic field found for csv field : " + csvField)
+}
+
+func (csvToAcousticFieldMapping *CSVToAcousticFieldMapping) getAcousticField(csvField string) *AcousticField {
+	if csvToAcousticFieldMapping.CSVField == csvField {
+		return &AcousticField{
+			Name: csvToAcousticFieldMapping.AcousticField,
+		}
+	} else if csvToAcousticFieldMapping.HasChildren() {
+		for _, childCsvToAcousticFieldMapping := range csvToAcousticFieldMapping.ChildFieldMappings {
+			childMappedAcousticField := childCsvToAcousticFieldMapping.getAcousticField(csvField)
+			if childMappedAcousticField != nil {
+				return &AcousticField{
+					Name:  csvToAcousticFieldMapping.AcousticField,
+					Child: childMappedAcousticField,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (fieldMapping *ContentFieldMapping) GetChildCSVToAcousticFieldMapping() []CSVToAcousticFieldMapping {
+	csvToAcousticFieldMappings := make([]CSVToAcousticFieldMapping, 0)
+	for _, childFieldMapping := range fieldMapping.FieldMapping {
+		csvToAcousticFieldMappings = append(csvToAcousticFieldMappings, CSVToAcousticFieldMapping{
+			AcousticField:      childFieldMapping.AcousticProperty,
+			CSVField:           childFieldMapping.CsvProperty,
+			ChildFieldMappings: childFieldMapping.GetChildCSVToAcousticFieldMapping(),
+		})
+	}
+	if len(csvToAcousticFieldMappings) > 0 {
+		return csvToAcousticFieldMappings
+	} else {
+		return nil
+	}
+}
+
+func (csvContentTypeMapping *ContentTypeMapping) GetCSVToAcousticFieldMapping() []CSVToAcousticFieldMapping {
+	csvToAcousticFieldMappings := make([]CSVToAcousticFieldMapping, 0)
+	for _, fieldMapping := range csvContentTypeMapping.FieldMapping {
+		csvToAcousticFieldMappings = append(csvToAcousticFieldMappings, CSVToAcousticFieldMapping{
+			AcousticField:      fieldMapping.AcousticProperty,
+			CSVField:           fieldMapping.CsvProperty,
+			ChildFieldMappings: fieldMapping.GetChildCSVToAcousticFieldMapping(),
+		})
+	}
+	return csvToAcousticFieldMappings
 }
 
 type Config interface {

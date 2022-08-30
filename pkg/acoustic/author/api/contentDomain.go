@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/csv"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 )
 
@@ -115,13 +114,17 @@ type PreContentUpdateFunc func(updatedElement Element) (Element, []PostContentUp
 type PostContentUpdateFunc func() error
 
 type CSVValues struct {
+	Name        string
 	Value       string
-	HasChildren bool
 	ChildValues map[string]CSVValues
 }
 
+func (csvValues CSVValues) hasChildren() bool {
+	return len(csvValues.ChildValues) > 0
+}
+
 func (csvValues CSVValues) GetValue(fieldName string) (string, error) {
-	if !csvValues.HasChildren {
+	if !csvValues.hasChildren() {
 		if csvValues.Value != "" {
 			return csvValues.Value, nil
 		}
@@ -143,7 +146,7 @@ type Element interface {
 	PreContentUpdateFunctions() []PreContentUpdateFunc
 	ChildElements() map[string]Element
 	UpdateChildElement(key string, updatedElement Element) error
-	ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error)
+	ToCSV(childFields map[string]interface{}) (CSVValues, error)
 	GetOperation() Operation
 }
 
@@ -238,6 +241,7 @@ type CategoryPartElement struct {
 type ImageElement struct {
 	Mode  string `json:"mode"`
 	Asset Asset  `json:"asset"`
+	URL   string `json:"url"`
 	element
 }
 

@@ -2,50 +2,53 @@ package api
 
 import (
 	"fmt"
-	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/csv"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	errors "github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"strconv"
 	"strings"
 )
 
-func (element NumberElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element NumberElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{
 		Value: strconv.Itoa(int(element.Value)),
 	}, nil
 }
 
-func (element TextElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element TextElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{
 		Value: element.Value,
 	}, nil
 }
 
-func (element LinkElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element LinkElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	return CSVValues{
+		Value: element.LinkURL,
+	}, nil
+}
+
+func (element FormattedTextElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element FormattedTextElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element MultiTextElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element MultiTextElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
-	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
-}
-
-func (element FloatElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element FloatElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{Value: fmt.Sprintf("%.2f", element.Value)}, nil
 }
 
-func (element BooleanElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element BooleanElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	return CSVValues{
+		Value: strconv.FormatBool(element.Value),
+	}, nil
+}
+
+func (element DateElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element DateElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
-	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
-}
-
-func (element CategoryElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element CategoryElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	categories := element.Categories
 	outputCats := make([]string, 0)
 	for _, cat := range categories {
@@ -58,32 +61,39 @@ func (element CategoryElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSV
 	}, nil
 }
 
-func (element CategoryPartElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element CategoryPartElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element ImageElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
-	assetID := element.Asset.ID
-	response, err := NewAssetClient(env.AcousticAPIUrl()).Get(assetID)
-	if err != nil {
-		errors.ErrorWithStack(err)
+func (element ImageElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	url := ""
+	if element.URL != "" {
+		url = env.AcousticDomain() + element.URL
+	} else {
+		assetID := element.Asset.ID
+		response, err := NewAssetClient(env.AcousticAPIUrl()).Get(assetID)
+		if err != nil {
+			errors.ErrorWithStack(err)
+		}
+		url = env.AcousticDomain() + response.Path
 	}
+
 	return CSVValues{
-		Value: env.AcousticDomain() + response.Path,
+		Value: url,
 	}, nil
 }
 
-func (element FileElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element FileElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element GroupElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element GroupElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	csvValues := make(map[string]CSVValues, 0)
 	values := element.Value
 	for key, value := range values {
-		childFieldMapping := fieldMapping.GetChildFieldMapping(key)
-		if childFieldMapping != nil {
-			childCsvValues, err := value.(Element).ToCSV(childFieldMapping)
+		nextLevelChildFields := childFields[key]
+		if nextLevelChildFields != nil {
+			childCsvValues, err := value.(Element).ToCSV(nextLevelChildFields.(map[string]interface{}))
 			if err != nil {
 				return CSVValues{}, errors.ErrorWithStack(err)
 			}
@@ -96,14 +106,14 @@ func (element GroupElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVVal
 
 }
 
-func (element MultiGroupElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element MultiGroupElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element ReferenceElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element ReferenceElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
 
-func (element MultiReferenceElement) ToCSV(fieldMapping *csv.ContentFieldMapping) (CSVValues, error) {
+func (element MultiReferenceElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }

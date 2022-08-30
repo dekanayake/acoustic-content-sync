@@ -183,28 +183,22 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 	if err != nil {
 		return errors.ErrorWithStack(err)
 	}
-	acousticFields := configTypeMapping.GetAcousticFields()
+	csvFieldMappings := configTypeMapping.GetCSVToAcousticFieldMapping()
 	rowHeaders := make([]string, 0)
 	rowHeaderIndexMap := make(map[string]int8, 0)
 	rowHeaderIndex := 0
-	for _, acousticField := range acousticFields {
-		fieldMapping, err := configTypeMapping.GetFieldMappingByAcousticField(acousticField)
-		if err != nil {
-			return errors.ErrorWithStack(err)
+	for _, csvFieldMapping := range csvFieldMappings {
+		if csvFieldMapping.CSVField != "" {
+			rowHeaders = append(rowHeaders, csvFieldMapping.CSVField)
 		}
-
-		rowHeaders = append(rowHeaders, acousticField)
 		rowHeaderIndex = rowHeaderIndex + 1
-		rowHeaderIndexMap[acousticField] = int8(rowHeaderIndex)
-		childCsvFields, err := fieldMapping.GetAllChildCSVFields()
-		if err != nil {
-			return errors.ErrorWithStack(err)
-		}
+		rowHeaderIndexMap[csvFieldMapping.CSVField] = int8(rowHeaderIndex)
+		childCsvFields := csvFieldMapping.AllChildCSVFields()
 
-		for _, childField := range childCsvFields {
-			rowHeaders = append(rowHeaders, childField)
+		for _, childCsvField := range childCsvFields {
+			rowHeaders = append(rowHeaders, childCsvField)
 			rowHeaderIndex = rowHeaderIndex + 1
-			rowHeaderIndexMap[acousticField] = int8(rowHeaderIndex)
+			rowHeaderIndexMap[childCsvField] = int8(rowHeaderIndex)
 		}
 	}
 	if err := csvFileWriter.Write(rowHeaders); err != nil {
@@ -238,30 +232,42 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 	if len(documents) > 0 {
 		for _, document := range documents {
 			contentId := document.Document.ID
-			existingContent, err := contentClient.Get(contentId)
-			if err != nil {
-				return errors.ErrorWithStack(err)
+			elements := document.Document.Elements
+			if elements == nil {
+				existingContent, err := contentClient.Get(contentId)
+				if err != nil {
+					return errors.ErrorWithStack(err)
+				}
+				elements = existingContent.Elements
 			}
-			row := make([]csvColumnValue, 0)
-			for _, acousticField := range acousticFields {
-				if element, ok := existingContent.Elements[acousticField]; ok {
 
-					fieldConfig, err := configTypeMapping.GetFieldMappingByAcousticField(acousticField)
+			row := make([]csvColumnValue, 0)
+			for _, csvField := range rowHeaders {
+				mappedAcousticField, err := GetAcousticField(csvFieldMappings, csvField)
+				if err != nil {
+					return errors.ErrorWithStack(err)
+				}
+				if element, ok := elements[mappedAcousticField.Name]; ok {
+					fieldConfig, err := configTypeMapping.GetFieldMappingByAcousticField(mappedAcousticField.Name)
 					if err != nil {
 						return errors.ErrorWithStack(err)
 					}
 					existingElement, err := api.Convert(element.(map[string]interface{}))
-					value, err := existingElement.ToCSV(fieldConfig)
+					childFields, err := fieldConfig.GetAcousticChildFields()
 					if err != nil {
 						return errors.ErrorWithStack(err)
 					}
-					fieldVal, err := value.GetValue(acousticField)
+					value, err := existingElement.ToCSV(childFields)
+					if err != nil {
+						return errors.ErrorWithStack(err)
+					}
+					fieldVal, err := value.GetValue(mappedAcousticField.GetLeaf())
 					if err != nil {
 						return errors.ErrorWithStack(err)
 					}
 					row = append(row, csvColumnValue{
 						Value: fieldVal,
-						Index: rowHeaderIndexMap[acousticField],
+						Index: rowHeaderIndexMap[csvField],
 					})
 
 				}

@@ -580,12 +580,12 @@ func main() {
 	////delete_reece(configName)
 	//badges(feedName, configName)
 
-	//feedName := "20220816_materials.csv"
+	//feedName := "20220830_materials.csv"
 	//configName := "config_3d_product_material_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_review(feedName, configName)
 
-	//feedName := "20220816_Metadata_acoustic.csv"
+	//feedName := "20220830_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration_review(feedName, configName)
