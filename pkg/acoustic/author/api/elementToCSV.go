@@ -35,7 +35,7 @@ func (element MultiTextElement) ToCSV(childFields map[string]interface{}) (CSVVa
 }
 
 func (element FloatElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
-	return CSVValues{Value: fmt.Sprintf("%.2f", element.Value)}, nil
+	return CSVValues{Value: fmt.Sprintf("%.6f", element.Value)}, nil
 }
 
 func (element BooleanElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
