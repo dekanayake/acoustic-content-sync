@@ -514,12 +514,14 @@ type AcousticField struct {
 	Child *AcousticField
 }
 
-func (acousticField *AcousticField) GetLeaf() string {
-	if acousticField.Child != nil {
-		return acousticField.Child.GetLeaf()
-	} else {
-		return acousticField.Name
+func (acousticField *AcousticField) GetFieldNameHierarchy() []string {
+	fieldNameHierarchy := make([]string, 0)
+	child := acousticField.Child
+	for child != nil {
+		fieldNameHierarchy = append(fieldNameHierarchy, child.Name)
+		child = child.Child
 	}
+	return fieldNameHierarchy
 }
 
 func (csvToAcousticFieldMapping *CSVToAcousticFieldMapping) HasChildren() bool {

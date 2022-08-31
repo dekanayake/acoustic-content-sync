@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	"strings"
 )
 
 type Operation string
@@ -119,28 +120,26 @@ type CSVValues struct {
 	ChildValues map[string]CSVValues
 }
 
+func (csvValues *CSVValues) IsEmpty() bool {
+	return csvValues.Name == "" && csvValues.Value == "" && len(csvValues.ChildValues) == 0
+}
+
 func (csvValues *CSVValues) hasChildren() bool {
 	return len(csvValues.ChildValues) > 0
 }
 
-func (csvValues *CSVValues) GetValue(fieldName string) string {
+func (csvValues *CSVValues) GetValue(fieldNameHierarchy []string) (string, error) {
 	if !csvValues.hasChildren() {
 		if csvValues.Value != "" {
-			return csvValues.Value
+			return csvValues.Value, nil
 		}
 	} else {
-		if childValue, ok := csvValues.ChildValues[fieldName]; ok {
-			return childValue.GetValue(fieldName)
-		} else {
-			for _, childValue := range csvValues.ChildValues {
-				val := childValue.GetValue(fieldName)
-				if val != "" {
-					return val
-				}
-			}
+		fieldName := fieldNameHierarchy[0]
+		if childCSVValue, ok := csvValues.ChildValues[fieldName]; ok {
+			return childCSVValue.GetValue(fieldNameHierarchy[1:])
 		}
 	}
-	return ""
+	return "", errors.ErrorMessageWithStack("field not found for field hierarchy :" + strings.Join(fieldNameHierarchy, "/"))
 }
 
 type Element interface {
