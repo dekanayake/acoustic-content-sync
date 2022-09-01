@@ -95,7 +95,17 @@ func (element CategoryElement) Update(new Element) (Element, error) {
 	oldCatIds := element.CategoryIds
 	newElement := new.(CategoryElement)
 	newCatIds := newElement.CategoryIds
-	updatedCatIds := append(newCatIds, oldCatIds...)
+	updatedCatIds := oldCatIds
+	if new.GetOperation() == DELETE {
+		for index, removeCat := range updatedCatIds {
+			if slices.Contains(newCatIds, removeCat) {
+				updatedCatIds = append(updatedCatIds[:index], updatedCatIds[index+1:]...)
+			}
+		}
+	} else {
+		updatedCatIds = append(newCatIds, updatedCatIds...)
+	}
+
 	newElement.CategoryIds = funk.UniqString(updatedCatIds)
 	return newElement, nil
 }

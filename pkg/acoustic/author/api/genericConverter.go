@@ -50,6 +50,11 @@ type GenericData struct {
 	Context Context
 }
 
+type AcousticCategory struct {
+	Value     string
+	Operation Operation
+}
+
 type AcousticGroup struct {
 	Type string
 	Data []GenericData
@@ -313,7 +318,7 @@ func catIdFromCatPart(catPart string, linkToParent bool) ([]string, error) {
 }
 
 func (element CategoryElement) Convert(data interface{}) (Element, error) {
-	cats := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
+	cats := strings.Split(data.(GenericData).Value.(AcousticCategory).Value, env.MultipleItemsSeperator())
 	if len(cats) == 0 {
 		return nil, errors.ErrorMessageWithStack("No categories :" + data.(GenericData).Value.(string))
 	}
@@ -337,11 +342,12 @@ func (element CategoryElement) Convert(data interface{}) (Element, error) {
 		}
 	}
 	element.CategoryIds = allCatIds
+	element.Operation = data.(GenericData).Value.(AcousticCategory).Operation
 	return element, nil
 }
 
 func (element CategoryPartElement) Convert(data interface{}) (Element, error) {
-	cats := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
+	cats := strings.Split(data.(GenericData).Value.(AcousticCategory).Value, env.MultipleItemsSeperator())
 	linkToParents, err := data.(GenericData).Context.getBoolValue(LinkToParents)
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
@@ -366,6 +372,7 @@ func (element CategoryPartElement) Convert(data interface{}) (Element, error) {
 		allCatIds = append(allCatIds, key)
 	}
 	element.CategoryIds = allCatIds
+	element.Operation = data.(GenericData).Value.(AcousticCategory).Operation
 	return element, nil
 }
 

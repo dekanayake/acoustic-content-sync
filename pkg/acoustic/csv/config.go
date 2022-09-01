@@ -253,6 +253,7 @@ func (contentFieldMapping ContentFieldMapping) Validate() error {
 func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configTypeMapping *ContentTypeMapping) (interface{}, error) {
 	switch propType := api.FieldType(contentFieldMapping.PropertyType); propType {
 	case api.Category, api.CategoryPart:
+		category := api.AcousticCategory{}
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
@@ -265,7 +266,9 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		for _, categoryItem := range categoryItems {
 			catsWithRootCat = append(catsWithRootCat, contentFieldMapping.CategoryName+env.CategoryHierarchySeperator()+categoryItem)
 		}
-		return strings.Join(catsWithRootCat, env.MultipleItemsSeperator()), nil
+		category.Value = strings.Join(catsWithRootCat, env.MultipleItemsSeperator())
+		category.Operation = contentFieldMapping.Operation
+		return category, nil
 	case api.Group:
 		group := api.AcousticGroup{}
 		group.Type = contentFieldMapping.Type
