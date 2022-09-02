@@ -199,7 +199,7 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 			return nil, err
 		}
 		searchRequest := SearchRequest{
-			Term:           query,
+			Terms:          query,
 			ContentTypes:   []string{record.SearchType},
 			Classification: "content",
 		}
@@ -228,7 +228,7 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 			return nil, err
 		}
 		searchRequest := SearchRequest{
-			Term:           query,
+			Terms:          query,
 			ContentTypes:   []string{record.SearchType},
 			Classification: "content",
 		}
@@ -281,7 +281,11 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 
 		} else {
 			if !record.CreateNonExistingItems {
-				return nil, errors.ErrorMessageWithStack("No existing items found for query :" + query + " search type :" + record.SearchType)
+				queryStrings := ""
+				for key, query := range query {
+					queryStrings += key + ":" + query
+				}
+				return nil, errors.ErrorMessageWithStack("No existing items found for query :" + queryStrings + " search type :" + record.SearchType)
 			}
 		}
 	}

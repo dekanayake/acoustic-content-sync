@@ -28,7 +28,6 @@ type Document struct {
 }
 
 type SearchRequest struct {
-	Term           string
 	Terms          map[string]string
 	ContentTypes   []string
 	CriteriaList   []FilterCriteria
@@ -36,11 +35,8 @@ type SearchRequest struct {
 	AssetType      AssetType
 }
 
-func NewSearchRequest(term string, terms map[string]string) SearchRequest {
+func NewSearchRequest(terms map[string]string) SearchRequest {
 	request := SearchRequest{}
-	if term != "" {
-		request.Term = term
-	}
 	if terms != nil {
 		request.Terms = terms
 	}
@@ -112,14 +108,6 @@ func (searchRequest SearchRequest) AssetTypeQuery() string {
 
 }
 
-func (searchRequest SearchRequest) SearchTerm() string {
-	if searchRequest.Term == "" {
-		return "*"
-	} else {
-		return searchRequest.Term
-	}
-}
-
 type SearchClient interface {
 	Search(libraryId string, searchOnLibrary bool, searchOnDeliveryAPI bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error)
 }
@@ -138,9 +126,7 @@ func NewSearchClient(acousticApiUrl string) SearchClient {
 
 func (searchClient searchClient) Search(libraryId string, searchOnLibrary bool, searchOnDeliveryAPI bool, searchRequest SearchRequest, pagination Pagination) (SearchResponse, error) {
 	req := searchClient.c.NewRequest().SetResult(&SearchResponse{}).SetError(&ContentAuthoringErrorResponse{})
-	if searchRequest.Term != "" {
-		req.SetQueryParam("q", searchRequest.Term)
-	} else if searchRequest.Terms != nil {
+	if searchRequest.Terms != nil {
 		for termQueryParam, term := range searchRequest.Terms {
 			req.SetQueryParam(termQueryParam, term)
 		}

@@ -27,6 +27,7 @@ type AcousticDataRecord struct {
 	Update                 bool
 	CreateNonExistingItems bool
 	SearchTerm             string
+	SearchTerms            map[string]string
 	SearchOnLibrary        bool
 	SearchOnDeliveryAPI    bool
 	SearchValues           map[string]string
@@ -194,7 +195,8 @@ func (acousticDataRecord AcousticDataRecord) GetValue(columnName string) interfa
 	}).First().Val()
 }
 
-func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate() (string, error) {
+func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate() (map[string]string, error) {
+	result := make(map[string]string, 0)
 	if !acousticDataRecord.Update {
 		errors.ErrorMessageWithStack("Search term is available only for updatable contents")
 	}
@@ -203,7 +205,15 @@ func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate(
 	for _, searchKey := range acousticDataRecord.SearchKeys {
 		searchValues = append(searchValues, searchValuesMap[searchKey])
 	}
-	return fmt.Sprintf(acousticDataRecord.SearchTerm, searchValues...), nil
+	if acousticDataRecord.SearchTerm != "" {
+		result["q"] = fmt.Sprintf(acousticDataRecord.SearchTerm, searchValues...)
+	} else {
+		for searchKey, searchTerm := range acousticDataRecord.SearchTerms {
+			result[searchKey] = fmt.Sprintf(searchTerm, searchValues...)
+		}
+	}
+
+	return result, nil
 }
 
 func (element TextElement) Convert(data interface{}) (Element, error) {
@@ -779,7 +789,7 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 			return nil, err
 		}
 		searchRequest := SearchRequest{
-			Term:           query,
+			Terms:          map[string]string{"q": query},
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
@@ -818,7 +828,7 @@ func (element MultiReferenceElement) Convert(data interface{}) (Element, error) 
 			return nil, err
 		}
 		searchRequest := SearchRequest{
-			Term:           query,
+			Terms:          map[string]string{"q": query},
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}

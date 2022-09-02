@@ -106,6 +106,7 @@ type ContentFieldMapping struct {
 
 type RefPropertyMapping struct {
 	RefCSVProperty string `yaml:"refCSVProperty"`
+	StaticValue    string `yaml:"staticValue"`
 	PropertyName   string `yaml:"propertyName"`
 }
 
@@ -404,13 +405,19 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 }
 
 func (refPropertyMapping RefPropertyMapping) Context(dataRow DataRow) (map[string]string, error) {
-	val, err := dataRow.Get(refPropertyMapping.RefCSVProperty)
-	if err != nil {
-		return nil, errors.ErrorWithStack(err)
+	if refPropertyMapping.StaticValue != "" {
+		return map[string]string{
+			refPropertyMapping.PropertyName: refPropertyMapping.StaticValue,
+		}, nil
+	} else {
+		val, err := dataRow.Get(refPropertyMapping.RefCSVProperty)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		return map[string]string{
+			refPropertyMapping.PropertyName: val,
+		}, nil
 	}
-	return map[string]string{
-		refPropertyMapping.PropertyName: val,
-	}, nil
 }
 
 func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[string]string, error) {

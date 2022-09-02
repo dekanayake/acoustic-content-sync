@@ -205,7 +205,7 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 		return errors.ErrorWithStack(err)
 	}
 
-	searchRequest := api.NewSearchRequest(configTypeMapping.SearchTerm, configTypeMapping.SearchTerms)
+	searchRequest := api.NewSearchRequest(configTypeMapping.SearchTerms)
 	searchRequest.ContentTypes = []string{configTypeMapping.SearchType}
 	searchRequest.Classification = "content"
 

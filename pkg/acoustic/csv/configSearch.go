@@ -7,7 +7,7 @@ import (
 
 func (searchMapping SearchMapping) SearchRequest() api.SearchRequest {
 	searchRequest := api.SearchRequest{}
-	searchRequest.Term = searchMapping.SearchTerm
+	searchRequest.Terms = map[string]string{"q": searchMapping.SearchTerm}
 	searchRequest.ContentTypes = koazee.StreamOf([]string{searchMapping.ContentType}).
 		Filter(func(contentType string) bool {
 			return contentType != ""

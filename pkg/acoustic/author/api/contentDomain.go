@@ -244,7 +244,7 @@ type CategoryPartElement struct {
 type ImageElement struct {
 	Mode  string `json:"mode"`
 	Asset Asset  `json:"asset"`
-	URL   string `json:"url"`
+	URL   string `json:"url,omitempty"`
 	element
 }
 
