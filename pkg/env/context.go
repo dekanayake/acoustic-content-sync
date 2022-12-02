@@ -73,3 +73,7 @@ func LogErrorsToFile() bool {
 func ErrorLogFileLocation() string {
 	return GetOrPanic("ErrorLogFileLocation")
 }
+
+func AlwaysCreateNewAcousticRestAPIConnection() bool {
+	return GetOrPanic("AlwaysCreateNewAcousticRestAPIConnection") == "true"
+}

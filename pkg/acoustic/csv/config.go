@@ -12,6 +12,7 @@ import (
 	"github.com/wesovilabs/koazee"
 	"io/ioutil"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -72,6 +73,7 @@ type ContentFieldMapping struct {
 	ValuePattern          string               `yaml:"valuePattern"`
 	Mandatory             bool                 `yaml:"mandatory"`
 	StaticValue           string               `yaml:"staticValue"`
+	JoinedValue           string               `yaml:"joinedValue"`
 	AcousticProperty      string               `yaml:"acousticProperty"`
 	PropertyType          string               `yaml:"propertyType"`
 	CategoryName          string               `yaml:"categoryName"`
@@ -103,6 +105,9 @@ type ContentFieldMapping struct {
 	JSONListIndex   int
 	ValueAsJSONList bool
 }
+
+const JOIN_VALUE_VAR_REGX string = "\\${1}\\{{1}\\w+\\}{1}"
+const JOIN_VALUE_VAR_SYMBOL_REGX string = "\\$*\\{*\\}*"
 
 type RefPropertyMapping struct {
 	RefCSVProperty string `yaml:"refCSVProperty"`
@@ -149,7 +154,21 @@ func (contentFieldMapping ContentFieldMapping) ConvertToGenericData(dataRow Data
 }
 
 func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow DataRow) (string, error) {
-	if contentFieldMapping.StaticValue != "" {
+	if contentFieldMapping.JoinedValue != "" {
+		variableRegx, _ := regexp.Compile(JOIN_VALUE_VAR_REGX)
+		variableSymbolRegx, _ := regexp.Compile(JOIN_VALUE_VAR_SYMBOL_REGX)
+		matchedVariables := variableRegx.FindAllString(contentFieldMapping.JoinedValue, -1)
+		transformedValue := contentFieldMapping.JoinedValue
+		for _, matchedVariable := range matchedVariables {
+			matchedVariableName := variableSymbolRegx.ReplaceAllString(matchedVariable, "")
+			variableValue, err := dataRow.Get(matchedVariableName)
+			if err != nil {
+				return "", err
+			}
+			transformedValue = strings.Replace(transformedValue, matchedVariable, variableValue, 1)
+		}
+		return transformedValue, nil
+	} else if contentFieldMapping.StaticValue != "" {
 		return contentFieldMapping.StaticValue, nil
 	} else {
 		value, err := dataRow.Get(contentFieldMapping.CsvProperty)

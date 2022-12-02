@@ -216,6 +216,16 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 			if createErr != nil {
 				return nil, createErr
 			} else {
+				//searchMatchedCountAfterCreate := 0
+				//for ok := true; ok; ok = (searchMatchedCountAfterCreate > 0 && env.RepeatSearchUntilSearchRecordsExist()) {
+				//	log.Info(" waiting for created content to be reflected in search result .... ")
+				//	time.Sleep(60 * time.Second)
+				//	searchResponseAfterCreate, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), record.SearchOnLibrary, record.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
+				//	searchMatchedCountAfterCreate = searchResponseAfterCreate.Count
+				//	if err != nil {
+				//		return nil, err
+				//	}
+				//}
 				return response, nil
 			}
 		} else {
