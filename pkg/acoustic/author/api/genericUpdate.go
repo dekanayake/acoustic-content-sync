@@ -54,6 +54,11 @@ func (element BooleanElement) Update(new Element) (Element, error) {
 	}
 }
 
+func (element OptionSelectionElement) Update(new Element) (Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (element MultiTextElement) Update(new Element) (Element, error) {
 	return nil, errors.ErrorMessageWithStack("not implemented")
 }

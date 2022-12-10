@@ -71,6 +71,7 @@ type ContentFieldMapping struct {
 	CsvProperty           string               `yaml:"csvProperty"`
 	Ignore                bool                 `yaml:"ignore"`
 	ValuePattern          string               `yaml:"valuePattern"`
+	Regx                  []string             `yaml:"regx"`
 	Mandatory             bool                 `yaml:"mandatory"`
 	StaticValue           string               `yaml:"staticValue"`
 	JoinedValue           string               `yaml:"joinedValue"`
@@ -83,6 +84,7 @@ type ContentFieldMapping struct {
 	AssetLocation         string               `yaml:"assetLocation"`
 	IsWebUrl              bool                 `yaml:"isWebUrl"`
 	ImageWidth            uint                 `yaml:"imageWidth"`
+	UseExistingAsset      bool                 `yaml:"useExistingAsset"`
 	ImageHeight           uint                 `yaml:"imageHeight"`
 	EnforceImageDimension bool                 `yaml:"enforceImageDimension"`
 	Operation             api.Operation        `yaml:"operation"`
@@ -110,9 +112,8 @@ const JOIN_VALUE_VAR_REGX string = "\\${1}\\{{1}\\w+\\}{1}"
 const JOIN_VALUE_VAR_SYMBOL_REGX string = "\\$*\\{*\\}*"
 
 type RefPropertyMapping struct {
-	RefCSVProperty string `yaml:"refCSVProperty"`
-	StaticValue    string `yaml:"staticValue"`
-	PropertyName   string `yaml:"propertyName"`
+	PropertyName        string `yaml:"propertyName"`
+	ContentFieldMapping `yaml:",inline"`
 }
 
 func (contentFieldMapping ContentFieldMapping) ToJSONListIndexableContentFieldMapping(jsonValueListIndex int) ContentFieldMapping {
@@ -170,6 +171,24 @@ func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow 
 		return transformedValue, nil
 	} else if contentFieldMapping.StaticValue != "" {
 		return contentFieldMapping.StaticValue, nil
+	} else if contentFieldMapping.Regx != nil {
+		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
+		if err != nil {
+			return "", err
+		}
+		var extractedValue = value
+		for _, regx := range contentFieldMapping.Regx {
+			compiledRegx, err := regexp.Compile(regx)
+			if err != nil {
+				return "", err
+			}
+			extractedValue = compiledRegx.FindString(extractedValue)
+		}
+
+		if extractedValue == "" {
+			return "", errors.ErrorMessageWithStack("value was not extracted using regx , check  the regx is correct , check the regx configs. value :" + value)
+		}
+		return extractedValue, nil
 	} else {
 		value, err := dataRow.Get(contentFieldMapping.CsvProperty)
 		if err != nil {
@@ -374,6 +393,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		image.AssetLocation = contentFieldMapping.AssetLocation
 		image.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
 		image.IsWebUrl = contentFieldMapping.IsWebUrl
+		image.UseExistingAsset = contentFieldMapping.UseExistingAsset
 		image.Value = value
 		return image, nil
 	case api.Reference, api.MultiReference:
@@ -424,19 +444,13 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 }
 
 func (refPropertyMapping RefPropertyMapping) Context(dataRow DataRow) (map[string]string, error) {
-	if refPropertyMapping.StaticValue != "" {
-		return map[string]string{
-			refPropertyMapping.PropertyName: refPropertyMapping.StaticValue,
-		}, nil
-	} else {
-		val, err := dataRow.Get(refPropertyMapping.RefCSVProperty)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		return map[string]string{
-			refPropertyMapping.PropertyName: val,
-		}, nil
+	value, err := refPropertyMapping.getCsvValueOrStaticValue(dataRow)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
 	}
+	return map[string]string{
+		refPropertyMapping.PropertyName: value,
+	}, nil
 }
 
 func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[string]string, error) {

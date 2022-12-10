@@ -26,23 +26,24 @@ const (
 type FieldType string
 
 const (
-	Text           FieldType = "text"
-	MultiText      FieldType = "multi-text"
-	FormattedText  FieldType = "formatted-text"
-	Number         FieldType = "number"
-	Float          FieldType = "float"
-	Boolean        FieldType = "toggle"
-	Link           FieldType = "link"
-	Date           FieldType = "date"
-	Category       FieldType = "category"
-	CategoryPart   FieldType = "category-part"
-	File           FieldType = "file"
-	Video          FieldType = "video"
-	Image          FieldType = "image"
-	Group          FieldType = "group"
-	MultiGroup     FieldType = "multi-group"
-	Reference      FieldType = "reference"
-	MultiReference FieldType = "multi-reference"
+	Text            FieldType = "text"
+	MultiText       FieldType = "multi-text"
+	FormattedText   FieldType = "formatted-text"
+	Number          FieldType = "number"
+	Float           FieldType = "float"
+	Boolean         FieldType = "toggle"
+	Link            FieldType = "link"
+	Date            FieldType = "date"
+	Category        FieldType = "category"
+	CategoryPart    FieldType = "category-part"
+	File            FieldType = "file"
+	Video           FieldType = "video"
+	Image           FieldType = "image"
+	Group           FieldType = "group"
+	MultiGroup      FieldType = "multi-group"
+	Reference       FieldType = "reference"
+	MultiReference  FieldType = "multi-reference"
+	OptionSelection FieldType = "option-selection"
 )
 
 func (ft FieldType) Convert() (AcousticFieldType, error) {
@@ -73,6 +74,8 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 		return AcousticFieldType(AcousticFieldGroup), nil
 	case Reference, MultiReference:
 		return AcousticFieldType(AcousticFieldReference), nil
+	case OptionSelection:
+		return AcousticFieldType(AcousticOptionSelection), nil
 	default:
 		return AcousticFieldType("no mapping"), errors.ErrorMessageWithStack("No Acoustic field type found for property type" + string(ft))
 	}
@@ -93,6 +96,7 @@ const (
 	AcousticFieldImage         FieldType = "image"
 	AcousticFieldGroup         FieldType = "group"
 	AcousticFieldReference     FieldType = "reference"
+	AcousticOptionSelection    FieldType = "optionselection"
 )
 
 type Tags struct {
@@ -293,8 +297,17 @@ type MultiReferenceElement struct {
 	element
 }
 
+type OptionSelectionElement struct {
+	Values []OptionSelectionValue `json:"values"`
+	element
+}
+
 type ReferenceValue struct {
 	ID string `json:"id"`
+}
+
+type OptionSelectionValue struct {
+	Selection string `json:"selection"`
 }
 
 type Asset struct {
@@ -412,6 +425,10 @@ func Build(fieldType string) (Element, error) {
 		return element, nil
 	case MultiReference:
 		element := MultiReferenceElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case OptionSelection:
+		element := OptionSelectionElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	default:

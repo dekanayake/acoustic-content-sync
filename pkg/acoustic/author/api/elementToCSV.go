@@ -117,3 +117,8 @@ func (element ReferenceElement) ToCSV(childFields map[string]interface{}) (CSVVa
 func (element MultiReferenceElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
 	return CSVValues{}, errors.ErrorMessageWithStack("to csv not implemented")
 }
+
+func (o OptionSelectionElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	//TODO implement me
+	panic("implement me")
+}

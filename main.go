@@ -287,6 +287,49 @@ func custom_search(feedName string, configName string) {
 	}
 }
 
+func custom_search_products(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	//
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("cbcf8e69-a6ad-474c-b5db-766fc6956cfb", "Delete 3dplanner configuration", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "970266a6-c90c-4cc9-8bd6-e5867920e5ce")
+	status, err := contentService.CreateBatch("945ba2f8-5393-41f3-8504-7ea6e5086ed8", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func delete_pig_all(configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err = deleteService.Delete("f12876da-0017-41a8-8008-65065ed59f8a", "Delete Project Inspiration Gallery content", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+	//
+	err = deleteService.Delete("f12876da-0017-41a8-8008-65065ed59f8a", "Delete Project Inspiration Teams", configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+	//err = deleteService.Delete("f12876da-0017-41a8-8008-65065ed59f8a", "Delete Project Inspiration Gallery  images", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+}
+
 //
 //func delete_reece(configName string) {
 //	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
@@ -484,6 +527,38 @@ func read3dProductConfigurator(feedName string, configName string) {
 
 }
 
+func pig_teams(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "f12876da-0017-41a8-8008-65065ed59f8a")
+	status, err := contentService.CreateBatch("06f5cba1-4380-41f1-a115-64b2899e6480", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func pig_projects(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "f12876da-0017-41a8-8008-65065ed59f8a")
+	status, err := contentService.CreateBatch("ef57950a-dd09-4e3d-924b-0ad5be786091", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
 //
 //func sliBanners(feedName string, configName string) {
 //	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
@@ -587,12 +662,12 @@ func createCats(catName string, feedName string, configName string) {
 //}
 
 func main() {
-	//feedName := "20221114_materials.csv"
+	//feedName := "20221205_materials.csv"
 	//configName := "config_3d_product_material.yaml"
 	////delete_reece(configName)
 	//threed_materials(feedName, configName)
 
-	//feedName := "20221130_Metadata_acoustic.csv"
+	//feedName := "20221205_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
@@ -612,13 +687,13 @@ func main() {
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
 
-	feedName := "Data for URL codes.csv"
-	configName := "custom_search.yaml"
-	//delete_reece(configName)
-	custom_search(feedName, configName)
+	//feedName := "Data for URL codes.csv"
+	//configName := "custom_search_all.yaml"
+	////delete_reece(configName)
+	//custom_search(feedName, configName)
 
 	//feedName := "Data for URL codes.csv"
-	//configName := "custom_search.yaml"
+	//configName := "custom_search_products_all.yaml"
 	////delete_reece(configName)
 	//custom_search_products(feedName, configName)
 
@@ -627,18 +702,18 @@ func main() {
 	////delete_reece(configName)
 	//badges(feedName, configName)
 
-	//feedName := "20221201_materials_au_nz.csv"
+	//feedName := "20221205_materials.csv"
 	//configName := "config_3d_product_material_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_review(feedName, configName)
 
-	//feedName := "20221201_Metadata_acoustic_au_nz.csv"
+	//feedName := "20221205_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration_review(feedName, configName)
 
-	//feedName := "National Tiles - 3d Planner - Data.csv"
-	//configName := "3d_planner_tiles_utm_update.yaml"
+	//feedName := "National Tiles - 3d Planner & Moodboard - Export to Accoustic.csv"
+	//configName := "3d_planner_tiles_au_insert.yaml"
 	////delete_reece(configName)
 	//threed_tiles_update(feedName, configName)
 
@@ -666,6 +741,11 @@ func main() {
 	//configName := "config_3d_product_configurator_read.yaml"
 	////delete_reece(configName)
 	//read3dProductConfigurator(feedName, configName)
+
+	feedName := "pig-teams.csv"
+	configName := "pig-teams.yaml"
+	//delete_pig_all(configName)
+	pig_teams(feedName, configName)
 
 	//feedName := "Imagin3D Paint Colours_20221108.csv"
 	//configName := "3d_planner_paint_insert.yaml"

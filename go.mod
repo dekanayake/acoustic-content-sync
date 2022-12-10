@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.1.0
-	github.com/thoas/go-funk v0.9.1
+	github.com/thoas/go-funk v0.9.2
 	github.com/wesovilabs/koazee v0.0.5
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	gopkg.in/gographics/imagick.v3 v3.3.0
