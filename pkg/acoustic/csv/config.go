@@ -12,8 +12,6 @@ import (
 	"github.com/thoas/go-funk"
 	"github.com/wesovilabs/koazee"
 	"io/ioutil"
-	"net/http"
-	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -315,40 +313,6 @@ func (contentFieldMapping ContentFieldMapping) Validate() error {
 	return nil
 }
 
-func filterOnlyToExistingAssets(paths []string, basePath string, isUrl bool) ([]string, error) {
-	existingPaths := make([]string, 0)
-	if isUrl {
-		for _, path := range paths {
-			response, err := http.Get(path)
-			if err != nil {
-				return nil, err
-			}
-			if response.StatusCode != 200 {
-				log.Info("the asset in the path not available , since ignoring the asset. path :" + path + ", : error " + err.Error())
-			} else {
-				existingPaths = append(existingPaths, path)
-			}
-		}
-	} else {
-		for _, path := range paths {
-			assetFullPath := basePath + "/" + path
-			_, err := os.Open(assetFullPath)
-			if err != nil {
-				log.Info("the asset in the path not available , since  ignoring the asset. path :" + path + ", : error " + err.Error())
-			} else {
-				existingPaths = append(existingPaths, path)
-			}
-		}
-
-	}
-	if existingPaths != nil {
-		return existingPaths, nil
-	} else {
-		return nil, nil
-	}
-
-}
-
 func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configTypeMapping *ContentTypeMapping) (interface{}, error) {
 	switch propType := api.FieldType(contentFieldMapping.PropertyType); propType {
 	case api.Category, api.CategoryPart:
@@ -421,28 +385,18 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
-		if contentFieldMapping.DontCreateAssetIfAssetNotAvailable {
-			paths := []string{value}
-			existingPaths, err := filterOnlyToExistingAssets(paths, contentFieldMapping.AssetLocation, contentFieldMapping.IsWebUrl)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
-			}
-			if existingPaths == nil {
-				return nil, nil
-			}
-			value = existingPaths[0]
-		}
 		asset := api.AcousticFileAsset{
 			AssetNameConfig: api.AssetNameConfig{
 				UseOnlyAssetName:        contentFieldMapping.AssetName.UseOnlyAssetName,
 				AppendOriginalAssetName: contentFieldMapping.AssetName.AppendOriginalAssetName,
 				AssetName:               assetNameMappings,
 			},
-			AcousticAssetBasePath: contentFieldMapping.AcousticAssetBasePath,
-			AssetLocation:         contentFieldMapping.AssetLocation,
-			Tags:                  configTypeMapping.Tags,
-			IsWebUrl:              contentFieldMapping.IsWebUrl,
-			Value:                 value,
+			AcousticAssetBasePath:              contentFieldMapping.AcousticAssetBasePath,
+			AssetLocation:                      contentFieldMapping.AssetLocation,
+			Tags:                               configTypeMapping.Tags,
+			IsWebUrl:                           contentFieldMapping.IsWebUrl,
+			DontCreateAssetIfAssetNotAvailable: contentFieldMapping.DontCreateAssetIfAssetNotAvailable,
+			Value:                              value,
 		}
 		return asset, nil
 	case api.Image:
@@ -457,17 +411,6 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
-		if contentFieldMapping.DontCreateAssetIfAssetNotAvailable {
-			paths := []string{value}
-			existingPaths, err := filterOnlyToExistingAssets(paths, contentFieldMapping.AssetLocation, contentFieldMapping.IsWebUrl)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
-			}
-			if existingPaths == nil {
-				return nil, nil
-			}
-			value = existingPaths[0]
-		}
 		image := api.AcousticImageAsset{
 			Profiles:              contentFieldMapping.Profiles,
 			EnforceImageDimension: contentFieldMapping.EnforceImageDimension,
@@ -479,6 +422,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 			AppendOriginalAssetName: contentFieldMapping.AssetName.AppendOriginalAssetName,
 			AssetName:               assetNameMappings,
 		}
+		image.DontCreateAssetIfAssetNotAvailable = contentFieldMapping.DontCreateAssetIfAssetNotAvailable
 		image.AcousticAssetBasePath = contentFieldMapping.AcousticAssetBasePath
 		image.AssetLocation = contentFieldMapping.AssetLocation
 		image.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
@@ -499,17 +443,6 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 			return nil, errors.ErrorWithStack(err)
 		}
 		imageAssets := strings.Split(value, env.MultipleItemsSeperator())
-		if contentFieldMapping.DontCreateAssetIfAssetNotAvailable {
-			paths := imageAssets
-			existingPaths, err := filterOnlyToExistingAssets(paths, contentFieldMapping.AssetLocation, contentFieldMapping.IsWebUrl)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
-			}
-			if existingPaths == nil {
-				return nil, nil
-			}
-			imageAssets = existingPaths
-		}
 		convertedImageAssets := funk.Map(imageAssets, func(imageAsset string) api.AcousticImageAsset {
 			image := api.AcousticImageAsset{
 				Profiles:              contentFieldMapping.Profiles,
@@ -522,6 +455,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 				AppendOriginalAssetName: contentFieldMapping.AssetName.AppendOriginalAssetName,
 				AssetName:               assetNameMappings,
 			}
+			image.DontCreateAssetIfAssetNotAvailable = contentFieldMapping.DontCreateAssetIfAssetNotAvailable
 			image.AcousticAssetBasePath = contentFieldMapping.AcousticAssetBasePath
 			image.AssetLocation = contentFieldMapping.AssetLocation
 			image.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)

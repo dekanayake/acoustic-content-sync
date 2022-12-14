@@ -2,6 +2,7 @@ package csv
 
 import (
 	"encoding/csv"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/dimchansky/utfbom"
 	"github.com/wesovilabs/koazee"
@@ -22,7 +23,21 @@ type dataRow struct {
 func load(csvFile *os.File) (*contentData, error) {
 	reader, _ := utfbom.Skip(csvFile)
 	records := csv.NewReader(reader)
+
 	headerRecord, err := records.Read()
+	var unparsedRecordsWriter *csv.Writer = nil
+	if env.WriteUnParsedRecordsToCSV() {
+		unparsedRecordsFile, err := os.Create("unparsed_records.csv")
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		defer unparsedRecordsFile.Close()
+		unparsedRecordsWriter = csv.NewWriter(unparsedRecordsFile)
+		defer unparsedRecordsWriter.Flush()
+		if err := unparsedRecordsWriter.Write(headerRecord); err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+	}
 	if err == io.EOF {
 		return nil, errors.ErrorMessageWithStack("CSV file is empty. ")
 	}
@@ -41,7 +56,14 @@ func load(csvFile *os.File) (*contentData, error) {
 				break
 			}
 			if err != nil {
-				return nil, errors.ErrorWithStack(err)
+				if env.WriteUnParsedRecordsToCSV() {
+					if err := unparsedRecordsWriter.Write(contentRecord); err != nil {
+						return nil, errors.ErrorWithStack(err)
+					}
+					continue
+				} else {
+					return nil, errors.ErrorWithStack(err)
+				}
 			}
 			row := make(map[string]string)
 			for index, columnValue := range contentRecord {

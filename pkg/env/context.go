@@ -77,3 +77,11 @@ func ErrorLogFileLocation() string {
 func AlwaysCreateNewAcousticRestAPIConnection() bool {
 	return GetOrPanic("AlwaysCreateNewAcousticRestAPIConnection") == "true"
 }
+
+func WriteUnParsedRecordsToCSV() bool {
+	return GetOrPanic("WriteUnParsedRecordsToCSV") == "true"
+}
+
+func WriteFailedRecordIDToCSV() bool {
+	return GetOrPanic("WriteFailedRecordIDToCSV") == "true"
+}

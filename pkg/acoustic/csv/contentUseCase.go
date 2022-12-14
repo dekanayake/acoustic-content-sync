@@ -67,6 +67,19 @@ func (contentCreationStatus ContentCreationStatus) PrintFailed() (error error) {
 			}
 		}()
 
+		if env.WriteFailedRecordIDToCSV() {
+			failedIdsCSVFile, err := os.Create("failed_ids.csv")
+			if err != nil {
+				return errors.ErrorWithStack(err)
+			}
+			defer failedIdsCSVFile.Close()
+			failedIdsCSVWriter := csv.NewWriter(failedIdsCSVFile)
+			defer failedIdsCSVWriter.Flush()
+			for _, failedRecord := range contentCreationStatus.Failed {
+				failedIdsCSVWriter.Write([]string{failedRecord.CSVIDValue})
+			}
+		}
+
 		errorLog := log.New()
 		Formatter := new(log.TextFormatter)
 		errorLog.SetFormatter(Formatter)

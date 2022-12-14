@@ -60,14 +60,18 @@ func handlePreContentCreateFunctionsOnElement(element Element) (Element, error) 
 				if err != nil {
 					return nil, err
 				}
-				element.UpdateChildElement(key, createdChildElement)
+				if createdChildElement != nil {
+					element.UpdateChildElement(key, createdChildElement)
+				}
 			} else {
 				for _, preContentCreateFunc := range childElement.PreContentCreateFunctions() {
 					createdChildElement, err := preContentCreateFunc()
 					if err != nil {
 						return nil, err
 					}
-					element.UpdateChildElement(key, createdChildElement)
+					if createdChildElement != nil {
+						element.UpdateChildElement(key, createdChildElement)
+					}
 				}
 			}
 		}
@@ -93,7 +97,9 @@ func handlePreContentCreateFunctions(content Content) (Content, error) {
 					if err != nil {
 						return Content{}, err
 					}
-					content.Elements[fieldName] = element
+					if element != nil {
+						content.Elements[fieldName] = element
+					}
 				}
 			}
 		}
@@ -112,7 +118,9 @@ func handlePreContentUpdateFunctionsOnElement(element Element) (Element, []PostC
 					return nil, nil, err
 				}
 				totalPostContentUpdateFuncs = append(totalPostContentUpdateFuncs, postContentUpdateFuncs...)
-				element.UpdateChildElement(key, updatedChildElement)
+				if updatedChildElement != nil {
+					element.UpdateChildElement(key, updatedChildElement)
+				}
 			} else {
 				for _, preContentUpdateFunc := range childElement.PreContentUpdateFunctions() {
 					updatedChildElement, postContentUpdateFuncs, err := preContentUpdateFunc(childElement.(Element))
@@ -120,7 +128,9 @@ func handlePreContentUpdateFunctionsOnElement(element Element) (Element, []PostC
 						return nil, nil, err
 					}
 					totalPostContentUpdateFuncs = append(totalPostContentUpdateFuncs, postContentUpdateFuncs...)
-					element.UpdateChildElement(key, updatedChildElement)
+					if updatedChildElement != nil {
+						element.UpdateChildElement(key, updatedChildElement)
+					}
 				}
 			}
 		}
@@ -177,7 +187,9 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 			if err != nil {
 				return nil, errors.ErrorWithStack(err)
 			}
-			acc[columnData.Name] = element
+			if element != nil {
+				acc[columnData.Name] = element
+			}
 			return acc, nil
 		})
 	err := acousticContentDataOut.Err().UserError()
