@@ -26,24 +26,27 @@ const (
 type FieldType string
 
 const (
-	Text            FieldType = "text"
-	MultiText       FieldType = "multi-text"
-	FormattedText   FieldType = "formatted-text"
-	Number          FieldType = "number"
-	Float           FieldType = "float"
-	Boolean         FieldType = "toggle"
-	Link            FieldType = "link"
-	Date            FieldType = "date"
-	Category        FieldType = "category"
-	CategoryPart    FieldType = "category-part"
-	File            FieldType = "file"
-	Video           FieldType = "video"
-	Image           FieldType = "image"
-	Group           FieldType = "group"
-	MultiGroup      FieldType = "multi-group"
-	Reference       FieldType = "reference"
-	MultiReference  FieldType = "multi-reference"
-	OptionSelection FieldType = "option-selection"
+	Text                 FieldType = "text"
+	MultiText            FieldType = "multi-text"
+	FormattedText        FieldType = "formatted-text"
+	Number               FieldType = "number"
+	MultiNumber          FieldType = "multi-number"
+	Float                FieldType = "float"
+	Boolean              FieldType = "toggle"
+	Link                 FieldType = "link"
+	Date                 FieldType = "date"
+	Category             FieldType = "category"
+	CategoryPart         FieldType = "category-part"
+	File                 FieldType = "file"
+	Video                FieldType = "video"
+	Image                FieldType = "image"
+	MultiImage           FieldType = "multi-image"
+	Group                FieldType = "group"
+	MultiGroup           FieldType = "multi-group"
+	Reference            FieldType = "reference"
+	MultiReference       FieldType = "multi-reference"
+	OptionSelection      FieldType = "option-selection"
+	MultiOptionSelection FieldType = "multi-option-selection"
 )
 
 func (ft FieldType) Convert() (AcousticFieldType, error) {
@@ -52,7 +55,7 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 		return AcousticFieldType(AcousticFieldText), nil
 	case FormattedText:
 		return AcousticFieldType(AcousticFieldFormattedText), nil
-	case Number:
+	case Number, MultiNumber:
 		return AcousticFieldType(AcousticFieldNumber), nil
 	case Float:
 		return AcousticFieldType(AcousticFieldNumber), nil
@@ -68,13 +71,13 @@ func (ft FieldType) Convert() (AcousticFieldType, error) {
 		return AcousticFieldType(AcousticFieldFile), nil
 	case Video:
 		return AcousticFieldType(AcousticFieldVideo), nil
-	case Image:
+	case Image, MultiImage:
 		return AcousticFieldType(AcousticFieldImage), nil
 	case Group, MultiGroup:
 		return AcousticFieldType(AcousticFieldGroup), nil
 	case Reference, MultiReference:
 		return AcousticFieldType(AcousticFieldReference), nil
-	case OptionSelection:
+	case OptionSelection, MultiOptionSelection:
 		return AcousticFieldType(AcousticOptionSelection), nil
 	default:
 		return AcousticFieldType("no mapping"), errors.ErrorMessageWithStack("No Acoustic field type found for property type" + string(ft))
@@ -212,6 +215,11 @@ type NumberElement struct {
 	element
 }
 
+type MultiNumberElement struct {
+	Values []int64 `json:"values"`
+	element
+}
+
 type FloatElement struct {
 	Value float64 `json:"value"`
 	element
@@ -245,10 +253,19 @@ type CategoryPartElement struct {
 	element
 }
 
-type ImageElement struct {
+type ImageElementItem struct {
 	Mode  string `json:"mode"`
 	Asset Asset  `json:"asset"`
 	URL   string `json:"url,omitempty"`
+}
+
+type ImageElement struct {
+	ImageElementItem
+	element
+}
+
+type MultiImageElement struct {
+	Values []ImageElementItem `json:"values"`
 	element
 }
 
@@ -297,8 +314,13 @@ type MultiReferenceElement struct {
 	element
 }
 
-type OptionSelectionElement struct {
+type MultiOptionSelectionElement struct {
 	Values []OptionSelectionValue `json:"values"`
+	element
+}
+
+type OptionSelectionElement struct {
+	Value OptionSelectionValue `json:"value"`
 	element
 }
 
@@ -379,6 +401,10 @@ func Build(fieldType string) (Element, error) {
 		element := NumberElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
+	case MultiNumber:
+		element := MultiNumberElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
 	case Float:
 		element := FloatElement{}
 		element.ElementType = acousticFieldType
@@ -407,6 +433,10 @@ func Build(fieldType string) (Element, error) {
 		element := ImageElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
+	case MultiImage:
+		element := MultiImageElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
 	case File:
 		element := FileElement{}
 		element.ElementType = acousticFieldType
@@ -429,6 +459,10 @@ func Build(fieldType string) (Element, error) {
 		return element, nil
 	case OptionSelection:
 		element := OptionSelectionElement{}
+		element.ElementType = acousticFieldType
+		return element, nil
+	case MultiOptionSelection:
+		element := MultiOptionSelectionElement{}
 		element.ElementType = acousticFieldType
 		return element, nil
 	default:

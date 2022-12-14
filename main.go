@@ -742,10 +742,15 @@ func main() {
 	////delete_reece(configName)
 	//read3dProductConfigurator(feedName, configName)
 
-	feedName := "pig-teams.csv"
-	configName := "pig-teams.yaml"
+	//feedName := "pig-teams.csv"
+	//configName := "pig-teams.yaml"
+	////delete_pig_all(configName)
+	//pig_teams(feedName, configName)
+
+	feedName := "pig-projects-mini.csv"
+	configName := "pig-projects.yaml"
 	//delete_pig_all(configName)
-	pig_teams(feedName, configName)
+	pig_projects(feedName, configName)
 
 	//feedName := "Imagin3D Paint Colours_20221108.csv"
 	//configName := "3d_planner_paint_insert.yaml"

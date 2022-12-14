@@ -9,8 +9,11 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/jinzhu/copier"
 	log "github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 	"github.com/wesovilabs/koazee"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -67,27 +70,35 @@ type SearchMapping struct {
 	SearchTerm     string `yaml:"searchTerm"`
 }
 
+type AssetNameConfig struct {
+	AssetName               []RefPropertyMapping `yaml:"assetName"`
+	AppendOriginalAssetName bool                 `yaml:"appendOriginalAssetName"`
+	UseOnlyAssetName        bool                 `yaml:"useOnlyAssetName"`
+}
+
 type ContentFieldMapping struct {
-	CsvProperty           string               `yaml:"csvProperty"`
-	Ignore                bool                 `yaml:"ignore"`
-	ValuePattern          string               `yaml:"valuePattern"`
-	Regx                  []string             `yaml:"regx"`
-	Mandatory             bool                 `yaml:"mandatory"`
-	StaticValue           string               `yaml:"staticValue"`
-	JoinedValue           string               `yaml:"joinedValue"`
-	AcousticProperty      string               `yaml:"acousticProperty"`
-	PropertyType          string               `yaml:"propertyType"`
-	CategoryName          string               `yaml:"categoryName"`
-	AssetName             []RefPropertyMapping `yaml:"assetName"`
-	Profiles              []string             `yaml:"profiles"`
-	AcousticAssetBasePath string               `yaml:"acousticAssetBasePath"`
-	AssetLocation         string               `yaml:"assetLocation"`
-	IsWebUrl              bool                 `yaml:"isWebUrl"`
-	ImageWidth            uint                 `yaml:"imageWidth"`
-	UseExistingAsset      bool                 `yaml:"useExistingAsset"`
-	ImageHeight           uint                 `yaml:"imageHeight"`
-	EnforceImageDimension bool                 `yaml:"enforceImageDimension"`
-	Operation             api.Operation        `yaml:"operation"`
+	CsvProperty      string   `yaml:"csvProperty"`
+	Ignore           bool     `yaml:"ignore"`
+	ValuePattern     string   `yaml:"valuePattern"`
+	Regx             []string `yaml:"regx"`
+	Mandatory        bool     `yaml:"mandatory"`
+	StaticValue      string   `yaml:"staticValue"`
+	JoinedValue      string   `yaml:"joinedValue"`
+	AcousticProperty string   `yaml:"acousticProperty"`
+	PropertyType     string   `yaml:"propertyType"`
+	CategoryName     string   `yaml:"categoryName"`
+
+	AssetName                          AssetNameConfig `yaml:"assetNameConfig"`
+	Profiles                           []string        `yaml:"profiles"`
+	AcousticAssetBasePath              string          `yaml:"acousticAssetBasePath"`
+	AssetLocation                      string          `yaml:"assetLocation"`
+	IsWebUrl                           bool            `yaml:"isWebUrl"`
+	ImageWidth                         uint            `yaml:"imageWidth"`
+	UseExistingAsset                   bool            `yaml:"useExistingAsset"`
+	ImageHeight                        uint            `yaml:"imageHeight"`
+	EnforceImageDimension              bool            `yaml:"enforceImageDimension"`
+	Operation                          api.Operation   `yaml:"operation"`
+	DontCreateAssetIfAssetNotAvailable bool            `yaml:"dontCreateAssetIfAssetNotAvailable"`
 	// configuration related to group
 	Type         string                `yaml:"type"`
 	FieldMapping []ContentFieldMapping `yaml:"fieldMapping"`
@@ -99,6 +110,7 @@ type ContentFieldMapping struct {
 	SearchTerm            string             `yaml:"searchTerm"`
 	SearchOnLibrary       bool               `yaml:"searchOnLibrary"`
 	SearchKeys            []string           `yaml:"searchKeys"`
+	SearchOnDeliveryAPI   bool               `yaml:"searchOnDeliveryAPI"`
 	// configuration related the column value in
 	ValueAsJSON bool   `yaml:"valueAsJSON"`
 	JSONKey     string `yaml:"JSONKey"`
@@ -219,6 +231,20 @@ func (contentFieldMapping ContentFieldMapping) getCsvValueOrStaticValue(dataRow 
 	}
 }
 
+func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[string]string, error) {
+	acc := make(map[string]string, 0)
+	for _, refPropertyMapping := range refPropertyMappings {
+		val, err := refPropertyMapping.Context(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		for k, v := range val {
+			acc[k] = v
+		}
+	}
+	return acc, nil
+}
+
 func (contentFieldMapping ContentFieldMapping) getJSONACSVColumnValue(dataRow DataRow) ([]map[string]string, error) {
 	value, err := dataRow.Get(contentFieldMapping.CsvProperty)
 	if err != nil {
@@ -289,6 +315,40 @@ func (contentFieldMapping ContentFieldMapping) Validate() error {
 	return nil
 }
 
+func filterOnlyToExistingAssets(paths []string, basePath string, isUrl bool) ([]string, error) {
+	existingPaths := make([]string, 0)
+	if isUrl {
+		for _, path := range paths {
+			response, err := http.Get(path)
+			if err != nil {
+				return nil, err
+			}
+			if response.StatusCode != 200 {
+				log.Info("the asset in the path not available , since ignoring the asset. path :" + path + ", : error " + err.Error())
+			} else {
+				existingPaths = append(existingPaths, path)
+			}
+		}
+	} else {
+		for _, path := range paths {
+			assetFullPath := basePath + "/" + path
+			_, err := os.Open(assetFullPath)
+			if err != nil {
+				log.Info("the asset in the path not available , since  ignoring the asset. path :" + path + ", : error " + err.Error())
+			} else {
+				existingPaths = append(existingPaths, path)
+			}
+		}
+
+	}
+	if existingPaths != nil {
+		return existingPaths, nil
+	} else {
+		return nil, nil
+	}
+
+}
+
 func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configTypeMapping *ContentTypeMapping) (interface{}, error) {
 	switch propType := api.FieldType(contentFieldMapping.PropertyType); propType {
 	case api.Category, api.CategoryPart:
@@ -350,10 +410,6 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		multiGroup.Data = group_data_list
 		return multiGroup, nil
 	case api.File:
-		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
@@ -361,8 +417,27 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		if value == "" {
 			return nil, nil
 		}
+		assetNameMappings, err := assetName(contentFieldMapping.AssetName.AssetName, dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if contentFieldMapping.DontCreateAssetIfAssetNotAvailable {
+			paths := []string{value}
+			existingPaths, err := filterOnlyToExistingAssets(paths, contentFieldMapping.AssetLocation, contentFieldMapping.IsWebUrl)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			if existingPaths == nil {
+				return nil, nil
+			}
+			value = existingPaths[0]
+		}
 		asset := api.AcousticFileAsset{
-			AssetName:             assetName,
+			AssetNameConfig: api.AssetNameConfig{
+				UseOnlyAssetName:        contentFieldMapping.AssetName.UseOnlyAssetName,
+				AppendOriginalAssetName: contentFieldMapping.AssetName.AppendOriginalAssetName,
+				AssetName:               assetNameMappings,
+			},
 			AcousticAssetBasePath: contentFieldMapping.AcousticAssetBasePath,
 			AssetLocation:         contentFieldMapping.AssetLocation,
 			Tags:                  configTypeMapping.Tags,
@@ -371,10 +446,6 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		}
 		return asset, nil
 	case api.Image:
-		assetName, err := assetName(contentFieldMapping.AssetName, dataRow)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
@@ -382,20 +453,86 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		if value == "" {
 			return nil, nil
 		}
+		assetNameMappings, err := assetName(contentFieldMapping.AssetName.AssetName, dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if contentFieldMapping.DontCreateAssetIfAssetNotAvailable {
+			paths := []string{value}
+			existingPaths, err := filterOnlyToExistingAssets(paths, contentFieldMapping.AssetLocation, contentFieldMapping.IsWebUrl)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			if existingPaths == nil {
+				return nil, nil
+			}
+			value = existingPaths[0]
+		}
 		image := api.AcousticImageAsset{
 			Profiles:              contentFieldMapping.Profiles,
 			EnforceImageDimension: contentFieldMapping.EnforceImageDimension,
 			ImageHeight:           contentFieldMapping.ImageHeight,
 			ImageWidth:            contentFieldMapping.ImageWidth,
 		}
-		image.AssetName = assetName
+		image.AssetNameConfig = api.AssetNameConfig{
+			UseOnlyAssetName:        contentFieldMapping.AssetName.UseOnlyAssetName,
+			AppendOriginalAssetName: contentFieldMapping.AssetName.AppendOriginalAssetName,
+			AssetName:               assetNameMappings,
+		}
 		image.AcousticAssetBasePath = contentFieldMapping.AcousticAssetBasePath
 		image.AssetLocation = contentFieldMapping.AssetLocation
 		image.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
-		image.IsWebUrl = contentFieldMapping.IsWebUrl
 		image.UseExistingAsset = contentFieldMapping.UseExistingAsset
+		image.IsWebUrl = contentFieldMapping.IsWebUrl
 		image.Value = value
 		return image, nil
+	case api.MultiImage:
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, nil
+		}
+		assetNameMappings, err := assetName(contentFieldMapping.AssetName.AssetName, dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		imageAssets := strings.Split(value, env.MultipleItemsSeperator())
+		if contentFieldMapping.DontCreateAssetIfAssetNotAvailable {
+			paths := imageAssets
+			existingPaths, err := filterOnlyToExistingAssets(paths, contentFieldMapping.AssetLocation, contentFieldMapping.IsWebUrl)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			if existingPaths == nil {
+				return nil, nil
+			}
+			imageAssets = existingPaths
+		}
+		convertedImageAssets := funk.Map(imageAssets, func(imageAsset string) api.AcousticImageAsset {
+			image := api.AcousticImageAsset{
+				Profiles:              contentFieldMapping.Profiles,
+				EnforceImageDimension: contentFieldMapping.EnforceImageDimension,
+				ImageHeight:           contentFieldMapping.ImageHeight,
+				ImageWidth:            contentFieldMapping.ImageWidth,
+			}
+			image.AssetNameConfig = api.AssetNameConfig{
+				UseOnlyAssetName:        contentFieldMapping.AssetName.UseOnlyAssetName,
+				AppendOriginalAssetName: contentFieldMapping.AssetName.AppendOriginalAssetName,
+				AssetName:               assetNameMappings,
+			}
+			image.AcousticAssetBasePath = contentFieldMapping.AcousticAssetBasePath
+			image.AssetLocation = contentFieldMapping.AssetLocation
+			image.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
+			image.IsWebUrl = contentFieldMapping.IsWebUrl
+			image.UseExistingAsset = contentFieldMapping.UseExistingAsset
+			image.Value = imageAsset
+			return image
+		}).([]api.AcousticImageAsset)
+		return api.AcousticMultiImageAsset{
+			Assets: convertedImageAssets,
+		}, nil
 	case api.Reference, api.MultiReference:
 		reference := api.AcousticReference{}
 		reference.Type = contentFieldMapping.RefContentTypeMapping.Type
@@ -404,6 +541,7 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		reference.NameFields = contentFieldMapping.RefContentTypeMapping.Name
 		reference.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
 		reference.SearchType = contentFieldMapping.SearchType
+		reference.SearchOnDeliveryAPI = contentFieldMapping.SearchOnDeliveryAPI
 
 		if !contentFieldMapping.AlwaysNew {
 			value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
@@ -451,20 +589,6 @@ func (refPropertyMapping RefPropertyMapping) Context(dataRow DataRow) (map[strin
 	return map[string]string{
 		refPropertyMapping.PropertyName: value,
 	}, nil
-}
-
-func assetName(refPropertyMappings []RefPropertyMapping, dataRow DataRow) (map[string]string, error) {
-	acc := make(map[string]string, 0)
-	for _, refPropertyMapping := range refPropertyMappings {
-		val, err := refPropertyMapping.Context(dataRow)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		for k, v := range val {
-			acc[k] = v
-		}
-	}
-	return acc, nil
 }
 
 func (contentFieldMapping ContentFieldMapping) Context(dataRow DataRow, configTypeMapping *ContentTypeMapping) (api.Context, error) {

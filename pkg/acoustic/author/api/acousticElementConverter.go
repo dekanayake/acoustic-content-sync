@@ -168,6 +168,27 @@ var imageElementConverter = acousticElementConvertor{
 	}),
 }
 
+var multiImageElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldImage)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return true
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := MultiImageElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
 var categoryElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
 		return fieldType == AcousticFieldType(AcousticFieldCategory)
@@ -273,6 +294,7 @@ func init() {
 		booleanElementConverter,
 		fileElementConverter,
 		imageElementConverter,
+		multiImageElementConverter,
 		categoryElementConverter,
 		linkElementConverter,
 	}

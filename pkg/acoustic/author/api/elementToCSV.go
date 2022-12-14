@@ -122,3 +122,18 @@ func (o OptionSelectionElement) ToCSV(childFields map[string]interface{}) (CSVVa
 	//TODO implement me
 	panic("implement me")
 }
+
+func (multiImageElement MultiImageElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (element MultiOptionSelectionElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MultiNumberElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	//TODO implement me
+	panic("implement me")
+}

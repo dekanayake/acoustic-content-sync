@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -68,26 +69,32 @@ type AcousticMultiGroup struct {
 }
 
 type AcousticReference struct {
-	SearchType      string
-	Type            string
-	AlwaysNew       bool
-	Data            []GenericData
-	SearchTerm      string
-	SearchOnLibrary bool
-	SearchValues    []string
-	NameFields      []string
-	Tags            []string
-	Operation       Operation
+	SearchType          string
+	Type                string
+	AlwaysNew           bool
+	Data                []GenericData
+	SearchTerm          string
+	SearchOnLibrary     bool
+	SearchOnDeliveryAPI bool
+	SearchValues        []string
+	NameFields          []string
+	Tags                []string
+	Operation           Operation
+}
+
+type AssetNameConfig struct {
+	AssetName               map[string]string
+	AppendOriginalAssetName bool
+	UseOnlyAssetName        bool
 }
 
 type AcousticFileAsset struct {
-	AssetName             map[string]string
 	AcousticAssetBasePath string
 	AssetLocation         string
 	Tags                  []string
 	IsWebUrl              bool
 	UseExistingAsset      bool
-	UseAssetName          bool
+	AssetNameConfig       AssetNameConfig
 	Value                 string
 }
 
@@ -97,6 +104,10 @@ type AcousticImageAsset struct {
 	ImageWidth            uint
 	ImageHeight           uint
 	AcousticFileAsset
+}
+
+type AcousticMultiImageAsset struct {
+	Assets []AcousticImageAsset
 }
 
 func (accusticReference AcousticReference) searchQuery() (string, error) {
@@ -109,13 +120,12 @@ func (accusticReference AcousticReference) searchQuery() (string, error) {
 
 func (acousticImageAsset AcousticImageAsset) GetFileAsset() AcousticFileAsset {
 	return AcousticFileAsset{
-		AssetName:             acousticImageAsset.AssetName,
 		Tags:                  acousticImageAsset.Tags,
 		Value:                 acousticImageAsset.Value,
 		AcousticAssetBasePath: acousticImageAsset.AcousticAssetBasePath,
 		IsWebUrl:              acousticImageAsset.IsWebUrl,
 		UseExistingAsset:      acousticImageAsset.UseExistingAsset,
-		UseAssetName:          acousticImageAsset.UseAssetName,
+		AssetNameConfig:       acousticImageAsset.AssetNameConfig,
 		AssetLocation:         acousticImageAsset.AssetLocation,
 	}
 }
@@ -245,6 +255,10 @@ func (element MultiTextElement) Convert(data interface{}) (Element, error) {
 }
 
 func (element OptionSelectionElement) Convert(data interface{}) (Element, error) {
+	panic("implement me")
+}
+
+func (element MultiOptionSelectionElement) Convert(data interface{}) (Element, error) {
 	options := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
 	optionSelections := make([]OptionSelectionValue, 0)
 	for _, option := range options {
@@ -262,6 +276,20 @@ func (element NumberElement) Convert(data interface{}) (Element, error) {
 		return nil, errors.ErrorWithStack(err)
 	}
 	element.Value = numValue
+	return element, nil
+}
+
+func (element MultiNumberElement) Convert(data interface{}) (Element, error) {
+	numbersInStrings := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
+	numValues := make([]int64, 0)
+	for _, numberValInStr := range numbersInStrings {
+		numValue, err := strconv.ParseInt(numberValInStr, 0, 64)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		numValues = append(numValues, numValue)
+	}
+	element.Values = numValues
 	return element, nil
 }
 
@@ -402,15 +430,44 @@ func (element CategoryPartElement) Convert(data interface{}) (Element, error) {
 	return element, nil
 }
 
-func getAssetName(values map[string]string) string {
+func extractAssetNameFromAssetPath(path string) (string, error) {
+	extractedValue := path
+	regxList := [2]string{"\\w+\\.(png|jpg)", "\\w+"}
+	for _, regx := range regxList {
+		compiledRegx, err := regexp.Compile(regx)
+		if err != nil {
+			return "", err
+		}
+		extractedValue = compiledRegx.FindString(extractedValue)
+	}
+	return extractedValue, nil
+}
+
+func getAssetName(asset AcousticFileAsset) (string, error) {
+	if asset.AssetNameConfig.UseOnlyAssetName {
+		assetName, err := extractAssetNameFromAssetPath(asset.Value)
+		if err != nil {
+			return "", errors.ErrorWithStack(err)
+		}
+		return assetName, nil
+	}
+
+	names := asset.AssetNameConfig.AssetName
 	assetName := ""
-	for _, v := range values {
+	for _, v := range names {
 		if assetName != "" {
 			assetName += "_"
 		}
 		assetName += v
 	}
-	return assetName
+	if asset.AssetNameConfig.AppendOriginalAssetName {
+		assetNameFromPath, err := extractAssetNameFromAssetPath(asset.Value)
+		if err != nil {
+			return "", errors.ErrorWithStack(err)
+		}
+		assetName = assetName + "_" + assetNameFromPath
+	}
+	return assetName, nil
 }
 
 func getLocalAssetFile(imgData AcousticFileAsset) (*os.File, string, error) {
@@ -425,8 +482,8 @@ func getLocalAssetFile(imgData AcousticFileAsset) (*os.File, string, error) {
 	}
 }
 
-func getWebAssetFile(imgData GenericData) (string, string, error) {
-	assetUrl := imgData.Value.(AcousticImageAsset).Value
+func getWebAssetFile(fileAsset AcousticFileAsset) (string, string, error) {
+	assetUrl := fileAsset.Value
 	assetExtension := filepath.Ext(assetUrl)
 	response, err := http.Get(assetUrl)
 	if err != nil {
@@ -484,15 +541,13 @@ var isSameAsset = func(assetId string, newAssetName string) (bool, error) {
 	return newFingerprint.DeepEqual(oldFingerprint), nil
 }
 
-var getImageFunc = func(data interface{}) (*os.File, *os.File, string, error) {
-	imgData := data.(GenericData)
-	imageValue := imgData.Value.(AcousticImageAsset)
+var getImageFunc = func(imageValue AcousticImageAsset) (*os.File, *os.File, string, error) {
 	var assetFile *os.File
 	var tmpFile *os.File
 	var assetExtension string
 	var err error
 	if imageValue.IsWebUrl {
-		assetFilePath, assetExt, err := getWebAssetFile(imgData)
+		assetFilePath, assetExt, err := getWebAssetFile(imageValue.AcousticFileAsset)
 		assetExtension = assetExt
 		if err != nil {
 			return nil, nil, "", errors.ErrorWithStack(err)
@@ -531,42 +586,87 @@ var getImageFunc = func(data interface{}) (*os.File, *os.File, string, error) {
 	return assetFile, tmpFile, assetExtension, nil
 }
 
+func (element MultiImageElement) Convert(data interface{}) (Element, error) {
+	imgData := data.(GenericData)
+	multiImage := imgData.Value.(AcousticMultiImageAsset)
+	imageCreationFn := func() (Element, error) {
+		assets := make([]ImageElementItem, 0)
+		for _, imageAsset := range multiImage.Assets {
+			getOrCreateImageAssetFn := func() (string, error) {
+				id, cleanUpFunc, err := getOrCreateImageAsset(imageAsset, data)
+				if err != nil {
+					return "", err
+				}
+				if cleanUpFunc != nil {
+					defer cleanUpFunc()
+				}
+				return id, nil
+			}
+
+			id, err := getOrCreateImageAssetFn()
+			if err != nil {
+				return nil, err
+			}
+
+			assets = append(assets, ImageElementItem{
+				Asset: Asset{
+					ID: id,
+				},
+				Mode: "shared",
+			})
+		}
+		element.Values = assets
+		return element, nil
+	}
+
+	imageUpdateFn := func(updatedElement Element) (Element, []PostContentUpdateFunc, error) {
+		assets := make([]ImageElementItem, 0)
+		postContentUpdateFunctions := make([]PostContentUpdateFunc, 0)
+		for _, imageAsset := range multiImage.Assets {
+			getOrUpdateImageAssetFunc := func() (string, []PostContentUpdateFunc, error) {
+				id, cleanUpFunc, postContentUpdateFuncs, err := getOrUpdateImageAsset(imageAsset, updatedElement, data)
+				if err != nil {
+					return "", nil, err
+				}
+				if cleanUpFunc != nil {
+					defer cleanUpFunc()
+				}
+				return id, postContentUpdateFuncs, nil
+			}
+
+			id, postContentUpdateFuncs, err := getOrUpdateImageAssetFunc()
+			if err != nil {
+				return nil, nil, err
+			}
+			if postContentUpdateFunctions != nil {
+				postContentUpdateFunctions = append(postContentUpdateFunctions, postContentUpdateFuncs...)
+			}
+
+			assets = append(assets, ImageElementItem{
+				Asset: Asset{
+					ID: id,
+				},
+				Mode: "shared",
+			})
+		}
+		element.Values = assets
+		return element, postContentUpdateFunctions, nil
+	}
+	element.PreContentCreateFunctionList = []PreContentCreateFunc{imageCreationFn}
+	element.PreContentUpdateFunctionList = []PreContentUpdateFunc{imageUpdateFn}
+	return element, nil
+}
+
 func (element ImageElement) Convert(data interface{}) (Element, error) {
 	imageCreationFn := func() (Element, error) {
 		imgData := data.(GenericData)
 		imageValue := imgData.Value.(AcousticImageAsset)
-		var isAssetExist = false
-		var id = ""
-		if imageValue.UseExistingAsset {
-			var err error = nil
-			isAssetExist, id, err = checkAssetExist(data, imageValue)
-			if err != nil {
-				return nil, err
-			}
+		id, cleanUpFunc, err := getOrCreateImageAsset(imageValue, data)
+		if err != nil {
+			return nil, err
 		}
-
-		if !isAssetExist {
-			assetFile, tmpFile, assetExtension, err := getImageFunc(data)
-			defer assetFile.Close()
-			if tmpFile != nil {
-				defer os.Remove(tmpFile.Name())
-			}
-			if err != nil {
-				return nil, err
-			}
-			assetNameValue := getAssetName(imageValue.AssetName) + assetExtension
-			acousticAssetPath := imageValue.AcousticAssetBasePath + "/" + assetNameValue
-			profileValues := imageValue.Profiles
-			if profileValues == nil {
-				profileValues = []string{}
-			}
-			resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, imageValue.Tags,
-				acousticAssetPath, env.ContentStatus(), profileValues, env.LibraryID())
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
-			}
-			NewCacheRepository().PutCache(AssetCache, resp.Path, resp.Id)
-			id = resp.Id
+		if cleanUpFunc != nil {
+			defer cleanUpFunc()
 		}
 
 		element.Asset = Asset{
@@ -579,55 +679,14 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 	imageUpdateFn := func(updatedElement Element) (Element, []PostContentUpdateFunc, error) {
 		imgData := data.(GenericData)
 		imageValue := imgData.Value.(AcousticImageAsset)
-		var id = ""
-		var isAssetExist = false
-		if imageValue.UseExistingAsset {
-			var err error = nil
-			isAssetExist, id, err = checkAssetExist(data, imageValue)
-			if err != nil {
-				return nil, nil, err
-			}
+		id, cleanUpFunc, postContentUpdateFuncs, err := getOrUpdateImageAsset(imageValue, updatedElement, data)
+		if err != nil {
+			return nil, nil, err
 		}
-		var postContentUpdateFuncs []PostContentUpdateFunc = nil
-		if !isAssetExist {
-			assetFile, tmpFile, assetExtension, err := getImageFunc(data)
-			defer assetFile.Close()
-			if tmpFile != nil {
-				defer os.Remove(tmpFile.Name())
-			}
-			if err != nil {
-				return nil, nil, err
-			}
-			oldAssetId := updatedElement.(ImageElement).Asset.ID
-			isSameImage, err := isSameAsset(oldAssetId, assetFile.Name())
-			if err != nil {
-				return nil, nil, err
-			}
+		if cleanUpFunc != nil {
+			defer cleanUpFunc()
+		}
 
-			if !isSameImage {
-				imgData := data.(GenericData)
-				imageValue := imgData.Value.(AcousticImageAsset)
-				assetNameValue := getAssetName(imageValue.AssetName) + "_update_" + strconv.FormatInt(time.Now().Unix(), 10) + assetExtension
-				acousticAssetPath := imageValue.AcousticAssetBasePath + "/" + assetNameValue
-				resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, imageValue.Tags,
-					acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
-				NewCacheRepository().PutCache(AssetCache, resp.Path, resp.Id)
-				postUpdateFunc := func() error {
-					err := NewAssetClient(env.AcousticAPIUrl()).Delete(oldAssetId)
-					if err != nil {
-						errors.ErrorWithStack(err)
-					}
-					return nil
-				}
-				if err != nil {
-					return nil, nil, errors.ErrorWithStack(err)
-				}
-				id = resp.Id
-				postContentUpdateFuncs = []PostContentUpdateFunc{postUpdateFunc}
-			} else {
-				id = updatedElement.(FileElement).Asset.ID
-			}
-		}
 		element.Asset = Asset{
 			ID: id,
 		}
@@ -641,8 +700,114 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 
 }
 
-func checkAssetExist(data interface{}, imageValue AcousticImageAsset) (bool, string, error) {
-	assetFile, tmpFile, assetExtension, err := getImageFunc(data)
+func getOrCreateImageAsset(imageValue AcousticImageAsset, data interface{}) (string, func(), error) {
+	var isAssetExist = false
+	var id = ""
+	var cleanUpFunc func() = nil
+	if imageValue.UseExistingAsset {
+		var err error = nil
+		isAssetExist, id, err = checkAssetExist(imageValue)
+		if err != nil {
+			return "", cleanUpFunc, err
+		}
+	}
+
+	if !isAssetExist {
+		assetFile, tmpFile, assetExtension, err := getImageFunc(imageValue)
+		cleanUpFunc = func() {
+			assetFile.Close()
+			if tmpFile != nil {
+				os.Remove(tmpFile.Name())
+			}
+		}
+
+		if err != nil {
+			return "", cleanUpFunc, err
+		}
+		assetName, err := getAssetName(imageValue.AcousticFileAsset)
+		if err != nil {
+			return "", cleanUpFunc, err
+		}
+		assetNameValue := assetName + assetExtension
+		acousticAssetPath := imageValue.AcousticAssetBasePath + "/" + assetNameValue
+		profileValues := imageValue.Profiles
+		if profileValues == nil {
+			profileValues = []string{}
+		}
+		resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, imageValue.Tags,
+			acousticAssetPath, env.ContentStatus(), profileValues, env.LibraryID())
+		if err != nil {
+			return "", cleanUpFunc, errors.ErrorWithStack(err)
+		}
+		NewCacheRepository().PutCache(AssetCache, resp.Path, resp.Id)
+		id = resp.Id
+	}
+	return id, cleanUpFunc, nil
+}
+
+func getOrUpdateImageAsset(imageValue AcousticImageAsset, updatedElement Element, data interface{}) (string, func(), []PostContentUpdateFunc, error) {
+	var isAssetExist = false
+	var id = ""
+	var cleanUpFunc func() = nil
+	var postContentUpdateFuncs []PostContentUpdateFunc = nil
+	if imageValue.UseExistingAsset {
+		var err error = nil
+		isAssetExist, id, err = checkAssetExist(imageValue)
+		if err != nil {
+			return "", cleanUpFunc, nil, err
+		}
+	}
+
+	if !isAssetExist {
+		assetFile, tmpFile, assetExtension, err := getImageFunc(imageValue)
+		cleanUpFunc = func() {
+			assetFile.Close()
+			if tmpFile != nil {
+				os.Remove(tmpFile.Name())
+			}
+		}
+		if err != nil {
+			return "", cleanUpFunc, nil, err
+		}
+		oldAssetId := updatedElement.(ImageElement).Asset.ID
+		isSameImage, err := isSameAsset(oldAssetId, assetFile.Name())
+		if err != nil {
+			return "", cleanUpFunc, nil, err
+		}
+
+		if !isSameImage {
+			imgData := data.(GenericData)
+			imageValue := imgData.Value.(AcousticImageAsset)
+			assetName, err := getAssetName(imageValue.AcousticFileAsset)
+			if err != nil {
+				return "", cleanUpFunc, nil, errors.ErrorWithStack(err)
+			}
+			assetNameValue := assetName + "_update_" + strconv.FormatInt(time.Now().Unix(), 10) + assetExtension
+			acousticAssetPath := imageValue.AcousticAssetBasePath + "/" + assetNameValue
+			resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, imageValue.Tags,
+				acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
+			NewCacheRepository().PutCache(AssetCache, resp.Path, resp.Id)
+			postUpdateFunc := func() error {
+				err := NewAssetClient(env.AcousticAPIUrl()).Delete(oldAssetId)
+				if err != nil {
+					return errors.ErrorWithStack(err)
+				}
+				return nil
+			}
+			if err != nil {
+				return "", cleanUpFunc, nil, errors.ErrorWithStack(err)
+			}
+			id = resp.Id
+			postContentUpdateFuncs = []PostContentUpdateFunc{postUpdateFunc}
+		} else {
+			id = updatedElement.(FileElement).Asset.ID
+		}
+	}
+	return id, cleanUpFunc, postContentUpdateFuncs, nil
+}
+
+func checkAssetExist(imageValue AcousticImageAsset) (bool, string, error) {
+	assetFile, tmpFile, assetExtension, err := getImageFunc(imageValue)
 	defer assetFile.Close()
 	if tmpFile != nil {
 		defer os.Remove(tmpFile.Name())
@@ -650,7 +815,11 @@ func checkAssetExist(data interface{}, imageValue AcousticImageAsset) (bool, str
 	if err != nil {
 		return false, "", err
 	}
-	assetNameValue := getAssetName(imageValue.AssetName) + assetExtension
+	assetName, err := getAssetName(imageValue.AcousticFileAsset)
+	if err != nil {
+		return false, "", err
+	}
+	assetNameValue := assetName + assetExtension
 	path := imageValue.AcousticAssetBasePath + "/" + assetNameValue
 	var assetResponse *AssetResponse = nil
 	var isAssetExist = false
@@ -683,7 +852,7 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 		var assetExtension string
 		var err error
 		if fileValue.IsWebUrl {
-			assetFilePath, assetExt, err := getWebAssetFile(fileData)
+			assetFilePath, assetExt, err := getWebAssetFile(fileValue)
 			assetExtension = assetExt
 			if err != nil {
 				return nil, errors.ErrorWithStack(err)
@@ -702,7 +871,11 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 			defer assetFile.Close()
 		}
 
-		assetNameValue := getAssetName(fileValue.AssetName) + assetExtension
+		assetName, err := getAssetName(fileValue)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		assetNameValue := assetName + assetExtension
 
 		acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
 		resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
@@ -723,7 +896,7 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 		var assetExtension string
 		var err error
 		if fileValue.IsWebUrl {
-			assetFilePath, assetExt, err := getWebAssetFile(fileData)
+			assetFilePath, assetExt, err := getWebAssetFile(fileValue)
 			assetExtension = assetExt
 			if err != nil {
 				return nil, nil, errors.ErrorWithStack(err)
@@ -755,7 +928,11 @@ func (element FileElement) Convert(data interface{}) (Element, error) {
 		isAssetsSame := newFingerprint.DeepEqual(oldFingerprint)
 
 		if !isAssetsSame {
-			assetNameValue := getAssetName(fileValue.AssetName) + "_update_" + strconv.FormatInt(time.Now().Unix(), 10) + assetExtension
+			assetName, err := getAssetName(fileValue)
+			if err != nil {
+				return nil, nil, errors.ErrorWithStack(err)
+			}
+			assetNameValue := assetName + "_update_" + strconv.FormatInt(time.Now().Unix(), 10) + assetExtension
 			acousticAssetPath := fileValue.AcousticAssetBasePath + "/" + assetNameValue
 			resp, err := NewAssetClient(env.AcousticAPIUrl()).Create(bufio.NewReader(assetFile), assetNameValue, fileValue.Tags,
 				acousticAssetPath, env.ContentStatus(), []string{}, env.LibraryID())
@@ -871,7 +1048,7 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), referenceValue.SearchOnLibrary, false, searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), referenceValue.SearchOnLibrary, referenceValue.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -910,7 +1087,7 @@ func (element MultiReferenceElement) Convert(data interface{}) (Element, error) 
 			ContentTypes:   []string{referenceValue.SearchType},
 			Classification: "content",
 		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, false, searchRequest, Pagination{Start: 0, Rows: 1})
+		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, referenceValue.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}

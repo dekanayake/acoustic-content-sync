@@ -182,3 +182,18 @@ func (element MultiReferenceElement) Update(new Element) (Element, error) {
 	element.Values = updatedList
 	return element, nil
 }
+
+func (m MultiImageElement) Update(new Element) (Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (element MultiOptionSelectionElement) Update(new Element) (Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MultiNumberElement) Update(new Element) (Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
