@@ -74,17 +74,23 @@ type AssetNameConfig struct {
 	UseOnlyAssetName        bool                 `yaml:"useOnlyAssetName"`
 }
 
+type SanitizeConfig struct {
+	Sanitize bool     `yaml:"sanitize"`
+	Regx     []string `yaml:"regx"`
+}
+
 type ContentFieldMapping struct {
-	CsvProperty      string   `yaml:"csvProperty"`
-	Ignore           bool     `yaml:"ignore"`
-	ValuePattern     string   `yaml:"valuePattern"`
-	Regx             []string `yaml:"regx"`
-	Mandatory        bool     `yaml:"mandatory"`
-	StaticValue      string   `yaml:"staticValue"`
-	JoinedValue      string   `yaml:"joinedValue"`
-	AcousticProperty string   `yaml:"acousticProperty"`
-	PropertyType     string   `yaml:"propertyType"`
-	CategoryName     string   `yaml:"categoryName"`
+	CsvProperty      string         `yaml:"csvProperty"`
+	Ignore           bool           `yaml:"ignore"`
+	ValuePattern     string         `yaml:"valuePattern"`
+	SanitizeConfig   SanitizeConfig `yaml:"sanitizeConfig"`
+	Regx             []string       `yaml:"regx"`
+	Mandatory        bool           `yaml:"mandatory"`
+	StaticValue      string         `yaml:"staticValue"`
+	JoinedValue      string         `yaml:"joinedValue"`
+	AcousticProperty string         `yaml:"acousticProperty"`
+	PropertyType     string         `yaml:"propertyType"`
+	CategoryName     string         `yaml:"categoryName"`
 
 	AssetName                          AssetNameConfig `yaml:"assetNameConfig"`
 	Profiles                           []string        `yaml:"profiles"`
@@ -501,6 +507,24 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 			References: references,
 			Operation:  contentFieldMapping.Operation,
 		}, nil
+	case api.Text:
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, nil
+		}
+		if contentFieldMapping.SanitizeConfig.Sanitize {
+			for _, regx := range contentFieldMapping.SanitizeConfig.Regx {
+				compiledRegx, err := regexp.Compile(regx)
+				if err != nil {
+					return nil, err
+				}
+				value = compiledRegx.ReplaceAllString(value, "")
+			}
+		}
+		return value, nil
 	default:
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
