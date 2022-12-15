@@ -467,42 +467,40 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		return api.AcousticMultiImageAsset{
 			Assets: convertedImageAssets,
 		}, nil
-	case api.Reference, api.MultiReference:
-		reference := api.AcousticReference{}
-		reference.Type = contentFieldMapping.RefContentTypeMapping.Type
-		reference.AlwaysNew = contentFieldMapping.AlwaysNew
-		reference.Operation = contentFieldMapping.Operation
-		reference.NameFields = contentFieldMapping.RefContentTypeMapping.Name
-		reference.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
-		reference.SearchType = contentFieldMapping.SearchType
-		reference.SearchOnDeliveryAPI = contentFieldMapping.SearchOnDeliveryAPI
-
-		if !contentFieldMapping.AlwaysNew {
-			value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
-			}
-			if value == "" {
-				return nil, nil
-			}
-			reference.SearchValues = make([]string, 0)
-			for _, _ = range contentFieldMapping.SearchKeys {
-				reference.SearchValues = append(reference.SearchValues, value)
-			}
-			reference.SearchTerm = contentFieldMapping.SearchTerm
-			reference.SearchOnLibrary = contentFieldMapping.SearchOnLibrary
-		} else {
-			dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
-			for _, fieldMapping := range contentFieldMapping.FieldMapping {
-				data, err := fieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
-				if err != nil {
-					return nil, errors.ErrorWithStack(err)
-				}
-				dataList = append(dataList, data)
-			}
-			reference.Data = dataList
+	case api.Reference:
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, errors.ErrorWithStack(err)
+		}
+		reference, err := createAcousticReference(value, dataRow, configTypeMapping, contentFieldMapping)
+		if err != nil {
+			return nil, err
 		}
 		return reference, nil
+	case api.MultiReference:
+		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		if value == "" {
+			return nil, errors.ErrorWithStack(err)
+		}
+		referenceKeys := strings.Split(value, env.MultipleItemsSeperator())
+		references := make([]api.AcousticReference, 0)
+		for _, referenceKey := range referenceKeys {
+			reference, err := createAcousticReference(referenceKey, dataRow, configTypeMapping, contentFieldMapping)
+			if err != nil {
+				return nil, err
+			}
+			references = append(references, reference)
+		}
+		return api.AcousticMultiReference{
+			References: references,
+			Operation:  contentFieldMapping.Operation,
+		}, nil
 	default:
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
@@ -513,6 +511,37 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 		}
 		return value, nil
 	}
+}
+
+func createAcousticReference(value string, dataRow DataRow, configTypeMapping *ContentTypeMapping, contentFieldMapping ContentFieldMapping) (api.AcousticReference, error) {
+	reference := api.AcousticReference{}
+	reference.Type = contentFieldMapping.RefContentTypeMapping.Type
+	reference.AlwaysNew = contentFieldMapping.AlwaysNew
+	reference.Operation = contentFieldMapping.Operation
+	reference.NameFields = contentFieldMapping.RefContentTypeMapping.Name
+	reference.Tags = append(contentFieldMapping.RefContentTypeMapping.Tags, configTypeMapping.Tags...)
+	reference.SearchType = contentFieldMapping.SearchType
+	reference.SearchOnDeliveryAPI = contentFieldMapping.SearchOnDeliveryAPI
+
+	if !contentFieldMapping.AlwaysNew {
+		reference.SearchValues = make([]string, 0)
+		for _, _ = range contentFieldMapping.SearchKeys {
+			reference.SearchValues = append(reference.SearchValues, value)
+		}
+		reference.SearchTerm = contentFieldMapping.SearchTerm
+		reference.SearchOnLibrary = contentFieldMapping.SearchOnLibrary
+	} else {
+		dataList := make([]api.GenericData, 0, len(contentFieldMapping.RefContentTypeMapping.FieldMapping))
+		for _, fieldMapping := range contentFieldMapping.FieldMapping {
+			data, err := fieldMapping.ConvertToGenericData(dataRow, configTypeMapping)
+			if err != nil {
+				return api.AcousticReference{}, errors.ErrorWithStack(err)
+			}
+			dataList = append(dataList, data)
+		}
+		reference.Data = dataList
+	}
+	return reference, nil
 }
 
 func (refPropertyMapping RefPropertyMapping) Context(dataRow DataRow) (map[string]string, error) {

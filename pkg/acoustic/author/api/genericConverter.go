@@ -83,6 +83,11 @@ type AcousticReference struct {
 	Operation           Operation
 }
 
+type AcousticMultiReference struct {
+	References []AcousticReference
+	Operation  Operation
+}
+
 type AssetNameConfig struct {
 	AssetName               map[string]string
 	AppendOriginalAssetName bool
@@ -1112,41 +1117,45 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 
 func (element MultiReferenceElement) Convert(data interface{}) (Element, error) {
 	referenceData := data.(GenericData)
-	referenceValue := referenceData.Value.(AcousticReference)
-	value := ReferenceValue{}
-	if referenceValue.AlwaysNew {
-		acousticDataRecord := AcousticDataRecord{
-			Values:     referenceValue.Data,
-			NameFields: referenceValue.NameFields,
-			Tags:       referenceValue.Tags,
+	acousticMultiReference := referenceData.Value.(AcousticMultiReference)
+
+	values := make([]ReferenceValue, 0)
+	for _, referenceValue := range acousticMultiReference.References {
+		value := ReferenceValue{}
+		if referenceValue.AlwaysNew {
+			acousticDataRecord := AcousticDataRecord{
+				Values:     referenceValue.Data,
+				NameFields: referenceValue.NameFields,
+				Tags:       referenceValue.Tags,
+			}
+			contentCreateResponse, err := NewContentService(env.AcousticAuthUrl(), env.LibraryID()).CreateOrUpdateContentWithRetry(acousticDataRecord, referenceValue.Type)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			value.ID = contentCreateResponse.Id
+		} else {
+			query, err := referenceValue.searchQuery()
+			if err != nil {
+				return nil, err
+			}
+			searchRequest := SearchRequest{
+				Terms:          map[string]string{"q": query},
+				ContentTypes:   []string{referenceValue.SearchType},
+				Classification: "content",
+			}
+			searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, referenceValue.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			if searchResponse.Count == 0 {
+				return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type)
+			}
+			value.ID = searchResponse.Documents[0].Document.ID
 		}
-		contentCreateResponse, err := NewContentService(env.AcousticAuthUrl(), env.LibraryID()).CreateOrUpdateContentWithRetry(acousticDataRecord, referenceValue.Type)
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		value.ID = contentCreateResponse.Id
-	} else {
-		query, err := referenceValue.searchQuery()
-		if err != nil {
-			return nil, err
-		}
-		searchRequest := SearchRequest{
-			Terms:          map[string]string{"q": query},
-			ContentTypes:   []string{referenceValue.SearchType},
-			Classification: "content",
-		}
-		searchResponse, err := NewSearchClient(env.AcousticAPIUrl()).Search(env.LibraryID(), true, referenceValue.SearchOnDeliveryAPI, searchRequest, Pagination{Start: 0, Rows: 1})
-		if err != nil {
-			return nil, errors.ErrorWithStack(err)
-		}
-		if searchResponse.Count == 0 {
-			return nil, errors.ErrorMessageWithStack("No existing content available . content type : " + referenceValue.Type)
-		}
-		value.ID = searchResponse.Documents[0].Document.ID
+		values = append(values, value)
 	}
-	values := make([]ReferenceValue, 0, 1)
-	values = append(values, value)
+
 	element.Values = values
-	element.Operation = referenceValue.Operation
+	element.Operation = acousticMultiReference.Operation
 	return element, nil
 }
