@@ -8,6 +8,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/image"
 	"github.com/monmohan/xferspdy"
 	log "github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 	"github.com/wesovilabs/koazee"
 	"io"
 	"io/ioutil"
@@ -29,6 +30,7 @@ type AcousticDataRecord struct {
 	Update                 bool
 	CreateNonExistingItems bool
 	SearchTerm             string
+	SortQuery              string
 	SearchTerms            map[string]string
 	SearchOnLibrary        bool
 	SearchOnDeliveryAPI    bool
@@ -234,6 +236,10 @@ func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate(
 		}
 	}
 
+	if acousticDataRecord.SearchTerm != "" {
+
+	}
+
 	return result, nil
 }
 
@@ -267,6 +273,7 @@ func (element OptionSelectionElement) Convert(data interface{}) (Element, error)
 
 func (element MultiOptionSelectionElement) Convert(data interface{}) (Element, error) {
 	options := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
+	options = funk.UniqString(options)
 	optionSelections := make([]OptionSelectionValue, 0)
 	for _, option := range options {
 		optionSelections = append(optionSelections, OptionSelectionValue{

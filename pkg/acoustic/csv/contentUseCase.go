@@ -218,7 +218,14 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 		return errors.ErrorWithStack(err)
 	}
 
-	searchRequest := api.NewSearchRequest(configTypeMapping.SearchTerms)
+	searchTerms := configTypeMapping.SearchTerms
+	if searchTerms == nil {
+		searchTerms = make(map[string]string, 0)
+	}
+	if configTypeMapping.SearchTerm != "" {
+		searchTerms["q"] = configTypeMapping.SearchTerm
+	}
+	searchRequest := api.NewSearchRequest(searchTerms)
 	searchRequest.ContentTypes = []string{configTypeMapping.SearchType}
 	searchRequest.Classification = "content"
 
@@ -260,11 +267,17 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 				if err != nil {
 					return errors.ErrorWithStack(err)
 				}
+				fieldConfig, err := configTypeMapping.GetFieldMappingByAcousticField(mappedAcousticField.Name)
+				if err != nil {
+					return errors.ErrorWithStack(err)
+				}
+				if fieldConfig.AcousticID {
+					row = append(row, csvColumnValue{
+						Value: contentId,
+						Index: rowHeaderIndexMap[csvField],
+					})
+				}
 				if element, ok := elements[mappedAcousticField.Name]; ok {
-					fieldConfig, err := configTypeMapping.GetFieldMappingByAcousticField(mappedAcousticField.Name)
-					if err != nil {
-						return errors.ErrorWithStack(err)
-					}
 					existingElement, err := api.Convert(element.(map[string]interface{}))
 					childFields, err := fieldConfig.GetAcousticChildFields()
 					if err != nil {

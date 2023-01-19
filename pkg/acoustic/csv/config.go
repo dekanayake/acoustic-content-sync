@@ -89,6 +89,7 @@ type ContentFieldMapping struct {
 	StaticValue      string         `yaml:"staticValue"`
 	JoinedValue      string         `yaml:"joinedValue"`
 	AcousticProperty string         `yaml:"acousticProperty"`
+	AcousticID       bool           `yaml:"acousticID"`
 	PropertyType     string         `yaml:"propertyType"`
 	CategoryName     string         `yaml:"categoryName"`
 
