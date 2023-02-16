@@ -206,7 +206,7 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 		Tags:      record.Tags,
 	}
 	if !record.Update && record.CreateNonExistingItems {
-		query, err := record.searchQuerytoGetTheContentToUpdate()
+		query, err := record.SearchQuerytoGetTheContentToUpdate()
 		if err != nil {
 			return nil, err
 		}
@@ -235,7 +235,7 @@ func (service *contentService) createOrUpdate(record AcousticDataRecord, content
 		}
 	}
 	if record.Update {
-		query, err := record.searchQuerytoGetTheContentToUpdate()
+		query, err := record.SearchQuerytoGetTheContentToUpdate()
 		if err != nil {
 			return nil, err
 		}

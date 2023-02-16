@@ -218,7 +218,7 @@ func (acousticDataRecord AcousticDataRecord) GetValue(columnName string) interfa
 	}).First().Val()
 }
 
-func (acousticDataRecord AcousticDataRecord) searchQuerytoGetTheContentToUpdate() (map[string]string, error) {
+func (acousticDataRecord AcousticDataRecord) SearchQuerytoGetTheContentToUpdate() (map[string]string, error) {
 	result := make(map[string]string, 0)
 	if !acousticDataRecord.Update {
 		errors.ErrorMessageWithStack("Search term is available only for updatable contents")

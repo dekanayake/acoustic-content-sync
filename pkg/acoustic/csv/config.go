@@ -84,6 +84,7 @@ type ContentFieldMapping struct {
 	Ignore           bool           `yaml:"ignore"`
 	ValuePattern     string         `yaml:"valuePattern"`
 	SanitizeConfig   SanitizeConfig `yaml:"sanitizeConfig"`
+	RegxMatchedGroup uint           `yaml:"regXMatchedGroup"`
 	Regx             []string       `yaml:"regx"`
 	Mandatory        bool           `yaml:"mandatory"`
 	StaticValue      string         `yaml:"staticValue"`
