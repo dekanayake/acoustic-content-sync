@@ -134,7 +134,7 @@ func getFilterValues(fileLocationPath string, columns []string) ([]map[string]st
 }
 
 func (contentUseCase *contentUseCase) CreateBatch(contentType string, dataFeedPath string, configPath string) (ContentCreationStatus, error) {
-	records, err := Transform(contentType, dataFeedPath, configPath)
+	records, err := TransformContent(contentType, dataFeedPath, configPath)
 	if err != nil {
 		return ContentCreationStatus{}, errors.ErrorWithStack(err)
 	}

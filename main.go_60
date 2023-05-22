@@ -310,41 +310,17 @@ func custom_search_products(feedName string, configName string) {
 	}
 }
 
-func delete_pig_all(configName string) {
+//
+func delete_contents(configName string, libraryID string, deleteName string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	var err error
 	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
-	//err = deleteService.Delete("f12876da-0017-41a8-8008-65065ed59f8a", "Delete Project Inspiration Gallery content", configName)
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
-	//
-	err = deleteService.Delete("f12876da-0017-41a8-8008-65065ed59f8a", "Delete Project Inspiration Teams", configName)
+	err = deleteService.Delete(libraryID, deleteName, configName)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
-
-	//err = deleteService.Delete("f12876da-0017-41a8-8008-65065ed59f8a", "Delete Project Inspiration Gallery  images", configName)
-	//if err != nil {
-	//	errorHandling.WithError(err).Panic(err)
-	//}
 }
 
-//
-//func delete_reece(configName string) {
-//	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-//	var err error
-//	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
-//	err = deleteService.Delete("ff8c36e0-cc3d-48a0-8efe-9a4de800ce14", "Delete Reece Moodboard content", configName)
-//	if err != nil {
-//		errorHandling.WithError(err).Panic(err)
-//	}
-//
-//	err = deleteService.Delete("ff8c36e0-cc3d-48a0-8efe-9a4de800ce14", "Delete Reece Moodboard images", configName)
-//	if err != nil {
-//		errorHandling.WithError(err).Panic(err)
-//	}
-//}
 //
 //func nonreece(feedName string, configName string) {
 //
@@ -473,6 +449,24 @@ func readCustomSearch(feedName string, configName string) {
 
 }
 
+func moodboardDelete(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	status, err := deleteService.DeleteByFeed("Delete moodboard reece prodeucts", "f5fe4c5c-67db-465a-aba6-75618cdcbf30", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success deleted record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
 func readCustomBadges(feedName string, configName string) {
 
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
@@ -503,6 +497,60 @@ func readTiles(feedName string, configName string) {
 
 	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "cbcf8e69-a6ad-474c-b5db-766fc6956cfb")
 	err := contentService.ReadBatch("ef48246d-a3e4-4cf7-aee7-32a19d9afd20", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
+func readPigProjects(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "f12876da-0017-41a8-8008-65065ed59f8a")
+	err := contentService.ReadBatch("ef57950a-dd09-4e3d-924b-0ad5be786091", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
+func readMoodboardProducts(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "ff8c36e0-cc3d-48a0-8efe-9a4de800ce14")
+	err := contentService.ReadBatch("f5fe4c5c-67db-465a-aba6-75618cdcbf30", feedName, configName)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+
+}
+
+func readMoodboardNonReeceProducts(feedName string, configName string) {
+
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+
+	//deleteService := csv.NewDeleteService(env.AcousticAPIUrl())
+	//err := deleteService.Delete("59f1a68b-f518-47a5-83d9-bd16e26c7daa", "Delete Ambulant badge data", configName)
+	//if err != nil {
+	//	errorHandling.WithError(err).Panic(err)
+	//}
+
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "ff8c36e0-cc3d-48a0-8efe-9a4de800ce14")
+	err := contentService.ReadBatch("4c8b4730-7503-485a-9c8e-23af27c61307", feedName, configName)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
@@ -548,6 +596,22 @@ func pig_projects(feedName string, configName string) {
 	var err error
 	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "f12876da-0017-41a8-8008-65065ed59f8a")
 	status, err := contentService.CreateBatch("ef57950a-dd09-4e3d-924b-0ad5be786091", feedName, configName)
+	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
+	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
+	if status.FailuresExist() {
+		log.Error("There are " + strconv.Itoa(len(status.Failed)) + " failures in creating contents , please check the log in " + env.ErrorLogFileLocation())
+		status.PrintFailed()
+	}
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func test2(feedName string, configName string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	var err error
+	contentService := csv.NewContentUseCase(os.Getenv("AcousticAPIURL"), "63118412-b229-4d55-9407-e2811c350ef6")
+	status, err := contentService.CreateBatch("a2aeac5c-fcf3-466c-b9a4-9430e584c9b6", feedName, configName)
 	log.Info(" total records :" + strconv.Itoa(status.TotalCount()))
 	log.Info(" success created record count  :" + strconv.Itoa(len(status.Success)))
 	if status.FailuresExist() {
@@ -640,15 +704,15 @@ func pig_projects(feedName string, configName string) {
 //	}
 //}
 //
-func createCats(catName string, feedName string, configName string) {
-	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-	var err error
-	catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
-	err = catService.Create(catName, feedName, configName)
-	if err != nil {
-		errorHandling.WithError(err).Panic(err)
-	}
-}
+//func createCats(catName string, feedName string, configName string) {
+//	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+//	var err error
+//	catService := csv.NewCategoryService(os.Getenv("AcousticAPIURL"))
+//	err = catService.Create(catName, feedName, configName)
+//	if err != nil {
+//		errorHandling.WithError(err).Panic(err)
+//	}
+//}
 
 //
 //func deleteCats() {
@@ -662,12 +726,12 @@ func createCats(catName string, feedName string, configName string) {
 //}
 
 func main() {
-	//feedName := "20221205_materials.csv"
+	//feedName := "20230202_materials.csv"
 	//configName := "config_3d_product_material.yaml"
 	////delete_reece(configName)
 	//threed_materials(feedName, configName)
 
-	//feedName := "20221205_Metadata_acoustic.csv"
+	//feedName := "20230202_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration(feedName, configName)
@@ -702,15 +766,20 @@ func main() {
 	////delete_reece(configName)
 	//badges(feedName, configName)
 
-	//feedName := "20221205_materials.csv"
+	//feedName := "20230212_materials.csv"
 	//configName := "config_3d_product_material_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_review(feedName, configName)
 
-	//feedName := "20221205_Metadata_acoustic.csv"
+	//feedName := "20230212_Metadata_acoustic.csv"
 	//configName := "config_3d_product_configurator_review.yaml"
 	////delete_reece(configName)
 	//threed_materials_configuration_review(feedName, configName)
+
+	feedName := "testtiles_2.csv"
+	configName := "3d_planner_tiles_au_insert.yaml"
+	//delete_reece(configName)
+	threed_tiles_update(feedName, configName)
 
 	//feedName := "National Tiles - 3d Planner & Moodboard - Export to Accoustic.csv"
 	//configName := "3d_planner_tiles_au_insert.yaml"
@@ -726,6 +795,9 @@ func main() {
 	//configName := "custom_search_new_arrivals_read.yaml"
 	////delete_reece(configName)
 	//readCustomSearch(feedName, configName)
+
+	//configName := "custom_search_new_arrivals_delete.yaml"
+	//delete_contents(configName, "970266a6-c90c-4cc9-8bd6-e5867920e5ce", "Delete newarrivals reece products")
 
 	//feedName := "custom_order_badges_to_delete.csv"
 	//configName := "custom_order_to_delete_read.yaml"
@@ -747,10 +819,25 @@ func main() {
 	////delete_pig_all(configName)
 	//pig_teams(feedName, configName)
 
-	feedName := "pig-projects-mini.csv"
-	configName := "pig-projects.yaml"
-	//delete_pig_all(configName)
-	pig_projects(feedName, configName)
+	//feedName := "pig-projects.csv"
+	//configName := "pig-projects.yaml"
+	////delete_pig_all(configName)
+	//pig_projects(feedName, configName)
+
+	//feedName := "pig-projects-read-sorted.csv"
+	//configName := "pig-projects-update.yaml"
+	////delete_pig_all(configName)
+	//pig_projects(feedName, configName)
+
+	//feedName := "pig-projects-read.csv"
+	//configName := "pig-projects-read.yaml"
+	////delete_pig_all(configName)
+	//readPigProjects(feedName, configName)
+
+	//feedName := "test.csv"
+	//configName := "test.yaml"
+	////delete_pig_all(configName)
+	//test2(feedName, configName)
 
 	//feedName := "Imagin3D Paint Colours_20221108.csv"
 	//configName := "3d_planner_paint_insert.yaml"
@@ -760,5 +847,19 @@ func main() {
 	//configName := "3d_planner_paint_insert.yaml"
 	////delete_reece(configName)
 	//threed_paint(feedName, configName)
+
+	//feedName := "moodboard-reece-products-read.csv"
+	//configName := "moodboard-reece-products-read.yaml"
+	////delete_pig_all(configName)
+	//readMoodboardProducts(feedName, configName)
+
+	//feedName := "moodboard-delete.csv"
+	//configName := "moodboard_reece_delete.yaml"
+	//moodboardDelete(feedName, configName)
+
+	//feedName := "moodboard-nonreece-products-read.csv"
+	//configName := "moodboard-nonreece-products-read.yaml"
+	////delete_pig_all(configName)
+	//readMoodboardNonReeceProducts(feedName, configName)
 
 }

@@ -149,7 +149,7 @@ func (d deleteService) DeleteByFeed(deleteMappingName string, contentType string
 
 	if len(records) > 0 {
 		for _, record := range records {
-			query, err := record.SearchQuerytoGetTheContentToUpdate()
+			query, err := record.SearchQuerytoGetTheContent()
 			if err != nil {
 				return ContentDeletionStatus{}, err
 			}

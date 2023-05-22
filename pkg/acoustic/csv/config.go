@@ -26,6 +26,7 @@ type ContentTypesMapping struct {
 	ContentType     []ContentTypeMapping `yaml:"contentType"`
 	CategoryMapping []CategoryMapping    `yaml:"category"`
 	DeleteMapping   []DeleteMapping      `yaml:"delete"`
+	SiteMapping     [][]SiteMapping      `yaml:"site"`
 }
 
 type ContentTypeMapping struct {
@@ -49,6 +50,10 @@ type ContentTypeMapping struct {
 	FilterType         string   `yaml:"filterType"`
 	FilterColumns      []string `yaml:"filterColumns"`
 	FilterFileLocation string   `yaml:"filterFileLocation"`
+}
+
+type SiteMapping struct {
+	ContentTypeMapping
 }
 
 type CategoryMapping struct {
@@ -758,6 +763,7 @@ type Config interface {
 	GetContentType(contentModel string) (*ContentTypeMapping, error)
 	GetCategory(categoryName string) (*CategoryMapping, error)
 	GetDeleteMapping(name string) (*DeleteMapping, error)
+	GetSiteMapping(pageContentModel string) (*SiteMapping, error)
 }
 
 type config struct {
@@ -814,4 +820,16 @@ func (config *config) GetDeleteMapping(name string) (*DeleteMapping, error) {
 		return nil, errors.ErrorMessageWithStack("No delete mapping found for provided name :" + name)
 	}
 	return &deleteMapping, nil
+}
+
+func (config config) GetSiteMapping(pageContentType string) (*SiteMapping, error) {
+	siteMapping := koazee.StreamOf(config.mappings.SiteMapping).
+		Filter(func(siteMapping SiteMapping) bool {
+			return siteMapping.Type == pageContentType
+		}).
+		First().Val().(SiteMapping)
+	if &siteMapping == nil {
+		return nil, errors.ErrorMessageWithStack("No site mapping found for provided page content type :" + pageContentType)
+	}
+	return &siteMapping, nil
 }

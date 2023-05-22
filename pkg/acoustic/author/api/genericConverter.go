@@ -218,7 +218,7 @@ func (acousticDataRecord AcousticDataRecord) GetValue(columnName string) interfa
 	}).First().Val()
 }
 
-func (acousticDataRecord AcousticDataRecord) SearchQuerytoGetTheContentToUpdate() (map[string]string, error) {
+func (acousticDataRecord AcousticDataRecord) SearchQuerytoGetTheContent() (map[string]string, error) {
 	result := make(map[string]string, 0)
 	if !acousticDataRecord.Update {
 		errors.ErrorMessageWithStack("Search term is available only for updatable contents")
@@ -524,6 +524,11 @@ func checkAssetToUploadExists(asset AcousticFileAsset) (bool, error) {
 func getWebAssetFile(fileAsset AcousticFileAsset) (string, string, error) {
 	assetUrl := fileAsset.Value
 	assetExtension := filepath.Ext(assetUrl)
+	compiledRegx, err := regexp.Compile("(\\?){1}.*")
+	if err != nil {
+		return "", "", err
+	}
+	assetExtension = compiledRegx.ReplaceAllString(assetExtension, "")
 	response, err := http.Get(assetUrl)
 	if err != nil {
 		return "", "", err
@@ -860,7 +865,7 @@ func getOrUpdateImageAsset(imageValue AcousticImageAsset, updatedElement Element
 			id = resp.Id
 			postContentUpdateFuncs = []PostContentUpdateFunc{postUpdateFunc}
 		} else {
-			id = updatedElement.(FileElement).Asset.ID
+			id = updatedElement.(ImageElement).Asset.ID
 		}
 	}
 	return id, cleanUpFunc, postContentUpdateFuncs, nil
