@@ -37,7 +37,7 @@ var createCmd = &cobra.Command{
 
 func validateContentType(cmd *cobra.Command, contentType string) error {
 	configLocation := getFlagStringValue(cmd, "AcousticConfigLocation")
-	config, err := csv.InitConfig(configLocation)
+	config, err := csv.InitContentTypeMappingConfig(configLocation)
 	if err != nil {
 		return err
 	}

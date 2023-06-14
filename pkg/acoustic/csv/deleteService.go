@@ -130,12 +130,12 @@ func (d deleteService) DeleteByFeed(deleteMappingName string, contentType string
 	records := []api.AcousticDataRecord{}
 	if dataFeedPath != "" {
 		var err error = nil
-		records, err = Transform(contentType, dataFeedPath, configPath)
+		records, err = TransformContent(contentType, dataFeedPath, configPath)
 		if err != nil {
 			return ContentDeletionStatus{}, errors.ErrorWithStack(err)
 		}
 	}
-	config, err := InitConfig(configPath)
+	config, err := InitContentTypeMappingConfig(configPath)
 	if err != nil {
 		return ContentDeletionStatus{}, errors.ErrorWithStack(err)
 	}
@@ -200,7 +200,7 @@ func (d deleteService) DeleteByFeed(deleteMappingName string, contentType string
 }
 
 func (d deleteService) Delete(libraryId string, deleteMappingName string, configPath string) error {
-	config, err := InitConfig(configPath)
+	config, err := InitContentTypeMappingConfig(configPath)
 	if err != nil {
 		return errors.ErrorWithStack(err)
 	}

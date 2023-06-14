@@ -188,7 +188,7 @@ func (contentUseCase contentUseCase) ReadBatch(contentType string, dataFeedPath 
 	csvFileWriter := csv.NewWriter(csvFile)
 	defer csvFileWriter.Flush()
 
-	config, err := InitConfig(configPath)
+	config, err := InitContentTypeMappingConfig(configPath)
 	if err != nil {
 		return errors.ErrorWithStack(err)
 	}

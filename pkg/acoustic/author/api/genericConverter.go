@@ -48,11 +48,12 @@ type AcousticDataRecord struct {
 }
 
 type GenericData struct {
-	Name    string
-	Type    string
-	Ignore  bool
-	Value   interface{}
-	Context Context
+	Name         string
+	Type         string
+	Ignore       bool
+	Value        interface{}
+	Context      Context
+	LoadFromFile bool
 }
 
 type AcousticCategory struct {
@@ -113,6 +114,11 @@ type AcousticImageAsset struct {
 	ImageWidth            uint
 	ImageHeight           uint
 	AcousticFileAsset
+}
+
+type AcousticValue struct {
+	Value        string
+	LoadFromFile bool
 }
 
 type AcousticMultiImageAsset struct {
@@ -205,7 +211,16 @@ func (acousticDataRecord AcousticDataRecord) CSVRecordKeyValue() string {
 		Filter(func(columnValue GenericData) bool {
 			return columnValue.Name == acousticDataRecord.CSVRecordKey
 		}).Map(func(columnValue GenericData) string {
-		return columnValue.Value.(string)
+		var value string
+		switch columnValue.Value.(type) {
+		default:
+			value = columnValue.Value.(string)
+		case string:
+			value = columnValue.Value.(string)
+		case AcousticValue:
+			value = columnValue.Value.(AcousticValue).Value
+		}
+		return value
 	}).First().String()
 }
 
@@ -244,7 +259,16 @@ func (acousticDataRecord AcousticDataRecord) SearchQuerytoGetTheContent() (map[s
 }
 
 func (element TextElement) Convert(data interface{}) (Element, error) {
-	element.Value = data.(GenericData).Value.(string)
+	acousticValue := data.(GenericData).Value.(AcousticValue)
+	value := acousticValue.Value
+	if acousticValue.LoadFromFile {
+		textFile, err := os.ReadFile(acousticValue.Value) // just pass the file name
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		value = string(textFile)
+	}
+	element.Value = value
 	return element, nil
 }
 

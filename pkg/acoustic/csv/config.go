@@ -26,7 +26,7 @@ type ContentTypesMapping struct {
 	ContentType     []ContentTypeMapping `yaml:"contentType"`
 	CategoryMapping []CategoryMapping    `yaml:"category"`
 	DeleteMapping   []DeleteMapping      `yaml:"delete"`
-	SiteMapping     [][]SiteMapping      `yaml:"site"`
+	SiteMapping     []SiteMapping        `yaml:"site"`
 }
 
 type ContentTypeMapping struct {
@@ -53,7 +53,7 @@ type ContentTypeMapping struct {
 }
 
 type SiteMapping struct {
-	ContentTypeMapping
+	ContentTypeMapping `yaml:",inline"`
 }
 
 type CategoryMapping struct {
@@ -98,6 +98,7 @@ type ContentFieldMapping struct {
 	AcousticID       bool           `yaml:"acousticID"`
 	PropertyType     string         `yaml:"propertyType"`
 	CategoryName     string         `yaml:"categoryName"`
+	LoadFromFile     bool           `yaml:"loadFromFile"`
 
 	AssetName                          AssetNameConfig `yaml:"assetNameConfig"`
 	Profiles                           []string        `yaml:"profiles"`
@@ -531,7 +532,10 @@ func (contentFieldMapping ContentFieldMapping) Value(dataRow DataRow, configType
 				value = compiledRegx.ReplaceAllString(value, "")
 			}
 		}
-		return value, nil
+		return api.AcousticValue{
+			Value:        value,
+			LoadFromFile: contentFieldMapping.LoadFromFile,
+		}, nil
 	default:
 		value, err := contentFieldMapping.getCsvValueOrStaticValue(dataRow)
 		if err != nil {
@@ -770,7 +774,7 @@ type config struct {
 	mappings *ContentTypesMapping
 }
 
-func InitConfig(configPath string) (Config, error) {
+func InitContentTypeMappingConfig(configPath string) (Config, error) {
 	if configContent, err := ioutil.ReadFile(configPath); err != nil {
 		return nil, errors.ErrorWithStack(err)
 	} else {

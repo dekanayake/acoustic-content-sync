@@ -117,7 +117,7 @@ func (c categoryService) Create(categoryName string, dataFeedPath string, config
 		return errors.ErrorWithStack(err)
 	}
 
-	config, err := InitConfig(configPath)
+	config, err := InitContentTypeMappingConfig(configPath)
 	if err != nil {
 		return errors.ErrorWithStack(err)
 	}

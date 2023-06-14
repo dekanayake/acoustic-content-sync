@@ -19,7 +19,7 @@ func convert(acousticField string, configTypeMapping *ContentTypeMapping, dataRo
 }
 
 func TransformContent(contentType string, dataFeedPath string, configPath string) ([]api.AcousticDataRecord, error) {
-	config, err := InitConfig(configPath)
+	config, err := InitContentTypeMappingConfig(configPath)
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
@@ -79,7 +79,7 @@ func TransformContent(contentType string, dataFeedPath string, configPath string
 }
 
 func TransformSite(contentType string, dataFeedPath string, configPath string) ([]api.AcousticDataRecord, error) {
-	config, err := InitConfig(configPath)
+	config, err := InitContentTypeMappingConfig(configPath)
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
@@ -110,7 +110,7 @@ func TransformSite(contentType string, dataFeedPath string, configPath string) (
 		for _, searchKey := range siteMapping.SearchKeys {
 			for _, acousticDataItem := range acousticData {
 				if acousticDataItem.Name == searchKey {
-					searchValues[searchKey] = acousticDataItem.Value.(string)
+					searchValues[searchKey] = acousticDataItem.Value.(api.AcousticValue).Value
 				}
 			}
 		}

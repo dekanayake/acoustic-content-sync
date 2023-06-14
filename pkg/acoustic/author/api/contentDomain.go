@@ -47,7 +47,6 @@ const (
 	MultiReference       FieldType = "multi-reference"
 	OptionSelection      FieldType = "option-selection"
 	MultiOptionSelection FieldType = "multi-option-selection"
-	PageUrl              FieldType = "page-url"
 )
 
 func (ft FieldType) Convert() (AcousticFieldType, error) {
@@ -130,6 +129,10 @@ type SitePageResponse struct {
 	ParentID string `json:"parentId"`
 	Segment  string `json:"segment"`
 	URL      string `json:"url"`
+}
+
+type SitePageResponseList struct {
+	Items []SitePageResponse `json:"items"`
 }
 
 type PreContentCreateFunc func() (Element, error)
