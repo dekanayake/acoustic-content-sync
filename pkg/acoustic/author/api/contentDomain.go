@@ -118,10 +118,11 @@ type Content struct {
 }
 
 type SitePage struct {
-	Name      string `json:"name"`
-	ContentId string `json:"contentId"`
-	Segment   string `json:"segment"`
-	ParentId  string `json:"parentId"`
+	Name          string `json:"name"`
+	ContentId     string `json:"contentId,omitempty"`
+	ContentTypeId string `json:"contentTypeId,omitempty"`
+	Segment       string `json:"segment"`
+	ParentId      string `json:"parentId"`
 }
 
 type SitePageResponse struct {

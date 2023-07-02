@@ -65,10 +65,10 @@ func (service *siteService) createParentPages(siteId string, parentPageID string
 			currentParentPageId = matchedChildPage.(SitePageResponse).ID
 		} else {
 			sitePage := SitePage{
-				Name:      segment,
-				Segment:   segment,
-				ParentId:  currentParentPageId,
-				ContentId: contentID,
+				Name:          segment,
+				Segment:       segment,
+				ParentId:      currentParentPageId,
+				ContentTypeId: env.GetOrPanic("ParentPageContentTypeID"),
 			}
 			createdSite, err := service.sitePageClient.Create(siteId, sitePage)
 			if err != nil {
@@ -132,7 +132,7 @@ func (service *siteService) createPage(siteId string, parentPageId string, recor
 		segments := strings.Split(acousticContentData["url"], "/")
 		lastPageSegment := segments[len(segments)-1]
 		pageToCreate := SitePage{
-			Name:      acousticContentData["name"],
+			Name:      lastPageSegment,
 			ContentId: searchResponse.Documents[0].Document.ID,
 			ParentId:  currentParentPageId,
 			Segment:   lastPageSegment,
