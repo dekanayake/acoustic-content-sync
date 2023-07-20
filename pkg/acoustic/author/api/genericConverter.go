@@ -25,6 +25,10 @@ import (
 
 type ContextKey string
 
+type SiteConfig struct {
+	DontCreatePageIfExist bool
+}
+
 type AcousticDataRecord struct {
 	CSVRecordKey           string
 	Update                 bool
@@ -45,6 +49,7 @@ type AcousticDataRecord struct {
 	FilterType         string
 	FilterColumns      []string
 	FilterFileLocation string
+	SiteConfig         SiteConfig
 }
 
 type GenericData struct {
@@ -261,7 +266,7 @@ func (acousticDataRecord AcousticDataRecord) SearchQuerytoGetTheContent() (map[s
 func (element TextElement) Convert(data interface{}) (Element, error) {
 	acousticValue := data.(GenericData).Value.(AcousticValue)
 	value := acousticValue.Value
-	if acousticValue.LoadFromFile {
+	if acousticValue.LoadFromFile && acousticValue.Value != "" {
 		textFile, err := os.ReadFile(acousticValue.Value) // just pass the file name
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)

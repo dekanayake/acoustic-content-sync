@@ -4,6 +4,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 	"github.com/wesovilabs/koazee"
 	"strings"
@@ -80,6 +81,21 @@ func (service *siteService) createParentPages(siteId string, parentPageID string
 	return currentParentPageId, nil
 }
 
+func (service *siteService) getPage(siteId string, parentPageId string, segment string) (*SitePageResponse, bool, error) {
+	childPages, err := service.sitePageClient.GetChildPages(siteId, parentPageId)
+	if err != nil {
+		return nil, false, errors.ErrorWithStack(err)
+	}
+	matchedChildPage := funk.Find(childPages, func(childPage SitePageResponse) bool {
+		return childPage.Segment == segment
+	})
+	if matchedChildPage != nil {
+		value := matchedChildPage.(SitePageResponse)
+		return &value, true, nil
+	}
+	return nil, false, nil
+}
+
 func (service *siteService) createPage(siteId string, parentPageId string, record AcousticDataRecord) (*SitePageResponse, error) {
 	acousticContentDataOut := koazee.StreamOf(record.Values).
 		Reduce(func(acc map[string]string, columnData GenericData) (map[string]string, error) {
@@ -131,6 +147,16 @@ func (service *siteService) createPage(siteId string, parentPageId string, recor
 		}
 		segments := strings.Split(acousticContentData["url"], "/")
 		lastPageSegment := segments[len(segments)-1]
+		if record.SiteConfig.DontCreatePageIfExist {
+			page, pageExist, err := service.getPage(siteId, currentParentPageId, lastPageSegment)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			if pageExist {
+				log.Info("Page :" + acousticContentData["url"] + "already exists. hence not creating")
+				return page, nil
+			}
+		}
 		pageToCreate := SitePage{
 			Name:      lastPageSegment,
 			ContentId: searchResponse.Documents[0].Document.ID,

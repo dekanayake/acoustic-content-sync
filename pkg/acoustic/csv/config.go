@@ -53,7 +53,8 @@ type ContentTypeMapping struct {
 }
 
 type SiteMapping struct {
-	ContentTypeMapping `yaml:",inline"`
+	ContentTypeMapping    `yaml:",inline"`
+	DontCreatePageIfExist bool `yaml:"dontCreatePageIfExist"`
 }
 
 type CategoryMapping struct {

@@ -30,7 +30,7 @@ func (sitePageClient sitePageClient) Create(siteID string, sitePage SitePage) (*
 		SetResult(&SitePageResponse{}).
 		SetError(&ContentAuthoringErrorResponse{}).SetPathParams(map[string]string{"siteId": siteID})
 
-	if resp, err := req.Post(sitePageClient.acousticApiUrl + "authoring/v1/sites/{siteId}/pages"); err != nil {
+	if resp, err := req.Post(sitePageClient.acousticApiUrl + "/authoring/v1/sites/{siteId}/pages"); err != nil {
 		return nil, errors.ErrorWithStack(err)
 	} else if resp.IsSuccess() {
 		return resp.Result().(*SitePageResponse), nil
@@ -50,7 +50,7 @@ func (sitePageClient sitePageClient) GetChildPages(siteID string, parentPageID s
 		SetResult(&SitePageResponseList{}).
 		SetError(&ContentAuthoringErrorResponse{}).SetPathParams(map[string]string{"siteId": siteID, "parentPageID": parentPageID})
 
-	if resp, err := req.Get(sitePageClient.acousticApiUrl + "mydelivery/v1/sites/{siteId}/pages/by-parent/{parentPageID}"); err != nil {
+	if resp, err := req.Get(sitePageClient.acousticApiUrl + "/mydelivery/v1/sites/{siteId}/pages/by-parent/{parentPageID}"); err != nil {
 		return nil, errors.ErrorWithStack(err)
 	} else if resp.IsSuccess() {
 		return resp.Result().(*SitePageResponseList).Items, nil

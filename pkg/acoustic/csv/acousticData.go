@@ -133,6 +133,9 @@ func TransformSite(contentType string, dataFeedPath string, configPath string) (
 			FilterFileLocation:     siteMapping.FilterFileLocation,
 			FilterType:             siteMapping.FilterType,
 			FilterColumns:          siteMapping.FilterColumns,
+			SiteConfig: api.SiteConfig{
+				DontCreatePageIfExist: siteMapping.DontCreatePageIfExist,
+			},
 		})
 	}
 	return acousticDataList, nil
