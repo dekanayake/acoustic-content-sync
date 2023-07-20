@@ -3,3 +3,5 @@
 *.yaml
 *.csv
 *.log
+assets/**
+final
