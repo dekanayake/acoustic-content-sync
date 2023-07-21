@@ -118,22 +118,31 @@ type Content struct {
 }
 
 type SitePage struct {
-	Name          string `json:"name"`
-	ContentId     string `json:"contentId,omitempty"`
-	ContentTypeId string `json:"contentTypeId,omitempty"`
-	Segment       string `json:"segment"`
-	ParentId      string `json:"parentId"`
+	Name          *string `json:"name"`
+	ContentId     *string `json:"contentId,omitempty"`
+	ContentTypeId *string `json:"contentTypeId,omitempty"`
+	Segment       *string `json:"segment"`
+	ParentId      *string `json:"parentId"`
+	Rev           *string `json:"rev,omitempty"`
+	Position      *int    `json:"position,omitempty"`
+	Description   *string `json:"description,omitempty"`
+	LayoutId      *string `json:"layoutId,omitempty"`
+	Title         *string `json:"title,omitempty"`
 }
 
 type SitePageResponse struct {
-	ID       string `json:"id"`
-	ParentID string `json:"parentId"`
-	Segment  string `json:"segment"`
-	URL      string `json:"url"`
-}
-
-type SitePageResponseList struct {
-	Items []SitePageResponse `json:"items"`
+	Name          string `json:"name"`
+	ID            string `json:"id"`
+	ParentID      string `json:"parentId"`
+	Segment       string `json:"segment"`
+	URL           string `json:"url"`
+	ContentId     string `json:"contentId"`
+	ContentTypeId string `json:"contentTypeId"`
+	Rev           string `json:"rev"`
+	Position      int    `json:"position"`
+	Description   string `json:"description"`
+	LayoutId      string `json:"layoutId"`
+	Title         string `json:"title"`
 }
 
 type PreContentCreateFunc func() (Element, error)

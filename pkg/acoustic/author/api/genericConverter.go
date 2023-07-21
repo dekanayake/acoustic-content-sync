@@ -27,6 +27,7 @@ type ContextKey string
 
 type SiteConfig struct {
 	DontCreatePageIfExist bool
+	UpdatePageIfExists    bool
 }
 
 type AcousticDataRecord struct {

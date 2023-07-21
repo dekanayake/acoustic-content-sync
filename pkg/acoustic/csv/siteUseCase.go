@@ -33,7 +33,7 @@ func (s siteUseCase) CreatePages(siteId string, parentPageId string, contentType
 	success := make([]ContentCreationSuccessStatus, 0)
 	koazee.StreamOf(pageRecords).
 		ForEach(func(record api.AcousticDataRecord) {
-			response, err := s.siteService.CreatePageWithRetry(siteId, parentPageId, record)
+			status, response, err := s.siteService.CreatePageWithRetry(siteId, parentPageId, record)
 			if err != nil {
 				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Error("Failed in creating  the content ")
 				failed = append(failed, ContentCreationFailedStatus{
@@ -42,12 +42,21 @@ func (s siteUseCase) CreatePages(siteId string, parentPageId string, contentType
 					Error:      errors.ErrorWithStack(err),
 				})
 			} else if response != nil {
-				log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Info("Successfully created the content ")
-				success = append(success, ContentCreationSuccessStatus{
-					CSVIDKey:   record.CSVRecordKey,
-					CSVIDValue: record.CSVRecordKeyValue(),
-					ContentID:  response.ID,
-				})
+				if status == api.PAGE_CREATED {
+					log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Info("Successfully created the content ")
+				} else if status == api.PAGE_UPDATED {
+					log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Info("Successfully updated the content ")
+				} else if status == api.PAGE_EXIST {
+					log.WithField(record.CSVRecordKey, record.CSVRecordKeyValue()).Info("page already exist ")
+				}
+
+				if status == api.PAGE_CREATED || status == api.PAGE_UPDATED {
+					success = append(success, ContentCreationSuccessStatus{
+						CSVIDKey:   record.CSVRecordKey,
+						CSVIDValue: record.CSVRecordKeyValue(),
+						ContentID:  response.ID,
+					})
+				}
 			}
 		}).Do()
 	return ContentCreationStatus{Success: success, Failed: failed}, nil

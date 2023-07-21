@@ -135,6 +135,7 @@ func TransformSite(contentType string, dataFeedPath string, configPath string) (
 			FilterColumns:          siteMapping.FilterColumns,
 			SiteConfig: api.SiteConfig{
 				DontCreatePageIfExist: siteMapping.DontCreatePageIfExist,
+				UpdatePageIfExists:    siteMapping.UpdatePageIfExist,
 			},
 		})
 	}
