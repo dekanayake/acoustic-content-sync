@@ -137,3 +137,8 @@ func (m MultiNumberElement) ToCSV(childFields map[string]interface{}) (CSVValues
 	//TODO implement me
 	panic("implement me")
 }
+
+func (d DateTimeElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	//TODO implement me
+	panic("implement me")
+}

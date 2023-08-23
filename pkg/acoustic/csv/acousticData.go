@@ -50,7 +50,7 @@ func TransformContent(contentType string, dataFeedPath string, configPath string
 		for _, searchKey := range configTypeMapping.SearchKeys {
 			for _, acousticDataItem := range acousticData {
 				if acousticDataItem.Name == searchKey {
-					searchValues[searchKey] = acousticDataItem.Value.(string)
+					searchValues[searchKey] = acousticDataItem.Value.(api.AcousticValue).Value
 				}
 			}
 		}

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
+	"strconv"
 )
 
 type elementMatcherFunc func(fieldType AcousticFieldType) bool
@@ -28,6 +29,69 @@ var textElementConverter = acousticElementConvertor{
 			return nil, err
 		}
 		element := TextElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
+var multiTextElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldText)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return true
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := MultiTextElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
+var optionSelectionElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticOptionSelection)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := OptionSelectionElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
+var datetimeElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldDateTime)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := DateTimeElement{}
 		err = json.Unmarshal(jsonString, &element)
 		if err != nil {
 			return nil, err
@@ -78,27 +142,6 @@ var booleanElementConverter = acousticElementConvertor{
 	}),
 }
 
-var linkElementConverter = acousticElementConvertor{
-	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
-		return fieldType == AcousticFieldType(AcousticFieldLink)
-	}),
-	isMultiMatcher: isMultiMatcherFunc(func() bool {
-		return false
-	}),
-	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
-		jsonLink, err := json.Marshal(acousticElement)
-		if err != nil {
-			return nil, err
-		}
-		element := LinkElement{}
-		err = json.Unmarshal(jsonLink, &element)
-		if err != nil {
-			return nil, err
-		}
-		return element, nil
-	}),
-}
-
 var numberElementConverter = acousticElementConvertor{
 	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
 		return fieldType == AcousticFieldType(AcousticFieldNumber)
@@ -121,6 +164,48 @@ var numberElementConverter = acousticElementConvertor{
 				return nil, err
 			}
 			return element, nil
+		}
+		return element, nil
+	}),
+}
+
+var linkElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldLink)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonLink, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := LinkElement{}
+		err = json.Unmarshal(jsonLink, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
+var multiLinkElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldLink)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return true
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonLink, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := MultiLinkElement{}
+		err = json.Unmarshal(jsonLink, &element)
+		if err != nil {
+			return nil, err
 		}
 		return element, nil
 	}),
@@ -297,6 +382,10 @@ func init() {
 		multiImageElementConverter,
 		categoryElementConverter,
 		linkElementConverter,
+		multiLinkElementConverter,
+		optionSelectionElementConverter,
+		datetimeElementConverter,
+		multiTextElementConverter,
 	}
 }
 
@@ -305,6 +394,7 @@ func Convert(acousticElementData map[string]interface{}) (Element, error) {
 	if err != nil {
 		return nil, err
 	}
+	_, multiOk := acousticElementData["values"]
 	element := element{}
 	json.Unmarshal(jsonString, &element)
 	if err != nil {
@@ -312,7 +402,7 @@ func Convert(acousticElementData map[string]interface{}) (Element, error) {
 	}
 	for _, converter := range converterList {
 		if converter.elementFactMatcher(element.ElementType) {
-			_, multiOk := acousticElementData["values"]
+
 			if multiOk && converter.isMultiMatcher() {
 				converted, err := converter.convert(acousticElementData)
 				if err != nil {
@@ -330,5 +420,5 @@ func Convert(acousticElementData map[string]interface{}) (Element, error) {
 			}
 		}
 	}
-	return nil, errors.ErrorMessageWithStack("No converter found for element type :" + string(element.ElementType))
+	return nil, errors.ErrorMessageWithStack("No converter found for element type : " + string(element.ElementType) + ",  is multi : " + strconv.FormatBool(multiOk))
 }

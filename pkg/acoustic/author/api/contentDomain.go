@@ -93,6 +93,7 @@ const (
 	AcousticFieldBoolean       FieldType = "toggle"
 	AcousticFieldLink          FieldType = "link"
 	AcousticFieldDate          FieldType = "date"
+	AcousticFieldDateTime      FieldType = "datetime"
 	AcousticFieldCategory      FieldType = "category"
 	AcousticFieldFile          FieldType = "file"
 	AcousticFieldVideo         FieldType = "video"
@@ -111,6 +112,7 @@ type Content struct {
 	REV       string                 `json:"rev,omitempty"`
 	Name      string                 `json:"name"`
 	TypeId    string                 `json:"typeId"`
+	Type      string                 `json:"type"`
 	Status    string                 `json:"status"`
 	Elements  map[string]interface{} `json:"elements"`
 	LibraryID string                 `json:"libraryId"`
@@ -186,6 +188,7 @@ type Element interface {
 	UpdateChildElement(key string, updatedElement Element) error
 	ToCSV(childFields map[string]interface{}) (CSVValues, error)
 	GetOperation() Operation
+	Type() AcousticFieldType
 }
 
 type element struct {
@@ -193,6 +196,7 @@ type element struct {
 	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
 	PreContentUpdateFunctionList []PreContentUpdateFunc `json:"-"`
 	Operation                    Operation              `json:"-"`
+	ID                           string                 `json:"id"`
 }
 
 type TextElement struct {
@@ -263,6 +267,16 @@ type LinkElement struct {
 	LinkText  string `json:"linkText"`
 	LinkTitle string `json:"linkTitle"`
 	element
+}
+
+type MultiLinkElement struct {
+	Values []LinkElement `json:"values"`
+	element
+}
+
+func (m MultiLinkElement) ToCSV(childFields map[string]interface{}) (CSVValues, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 type DateElement struct {
@@ -352,6 +366,11 @@ type OptionSelectionElement struct {
 	element
 }
 
+type DateTimeElement struct {
+	Value string `json:"value"`
+	element
+}
+
 type ReferenceValue struct {
 	ID string `json:"id"`
 }
@@ -404,6 +423,14 @@ type ContentAuthoringError struct {
 
 func (element element) Convert(data interface{}) (Element, error) {
 	return nil, errors.ErrorMessageWithStack("Not implementd need to override in extending elements")
+}
+
+func (element element) Type() AcousticFieldType {
+	return element.ElementType
+}
+
+func (element element) IsMulti() bool {
+	return false
 }
 
 func Build(fieldType string) (Element, error) {

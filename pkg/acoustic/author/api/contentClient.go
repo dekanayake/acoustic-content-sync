@@ -8,6 +8,7 @@ import (
 
 type ContentClient interface {
 	Get(id string) (*Content, error)
+	GetRendering(id string) (*Content, error)
 	Create(content Content) (*ContentAutheringResponse, error)
 	Update(content Content) (*ContentAutheringResponse, error)
 	Delete(id string) error
@@ -67,6 +68,26 @@ func (contentClient contentClient) Get(id string) (*Content, error) {
 		SetError(&ContentAuthoringErrorResponse{})
 
 	if resp, err := req.Get(contentClient.acousticApiUrl + "/authoring/v1/content/" + id); err != nil {
+		return nil, errors.ErrorWithStack(err)
+	} else if resp.IsSuccess() {
+		return resp.Result().(*Content), nil
+	} else if resp.IsError() && resp.StatusCode() == 400 {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in getting content : " + resp.Status() + "  " + string(errorString))
+	} else {
+		error := resp.Error().(*ContentAuthoringErrorResponse)
+		errorString, _ := json.MarshalIndent(error, "", "\t")
+		return nil, errors.ErrorMessageWithStack("error in getting content : " + resp.Status() + "  " + string(errorString))
+	}
+}
+
+func (contentClient contentClient) GetRendering(id string) (*Content, error) {
+	req := contentClient.c.NewRequest().
+		SetResult(&Content{}).
+		SetError(&ContentAuthoringErrorResponse{})
+
+	if resp, err := req.Get(contentClient.acousticApiUrl + "/api/delivery/v1/rendering/context/" + id); err != nil {
 		return nil, errors.ErrorWithStack(err)
 	} else if resp.IsSuccess() {
 		return resp.Result().(*Content), nil

@@ -204,9 +204,9 @@ func (acousticDataRecord AcousticDataRecord) Name() string {
 	return koazee.StreamOf(values).
 		Reduce(func(acc string, data GenericData) string {
 			if acc == "" {
-				acc += data.Value.(string)
+				acc += data.Value.(AcousticValue).Value
 			} else {
-				acc += "__" + data.Value.(string)
+				acc += "__" + data.Value.(AcousticValue).Value
 			}
 			return acc
 		}).String()

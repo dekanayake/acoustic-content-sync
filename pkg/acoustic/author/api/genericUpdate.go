@@ -197,3 +197,13 @@ func (m MultiNumberElement) Update(new Element) (Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
+
+func (d DateTimeElement) Update(new Element) (Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MultiLinkElement) Update(new Element) (Element, error) {
+	//TODO implement me
+	panic("implement me")
+}

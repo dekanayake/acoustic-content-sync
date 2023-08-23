@@ -132,6 +132,14 @@ type ContentFieldMapping struct {
 	// if json is list for multi groups or list of references
 	JSONListIndex   int
 	ValueAsJSONList bool
+	// link related data
+
+}
+
+type LinkMapping struct {
+	LinkUrl         string `yaml:"linkUrl"`
+	LinkText        string `yaml:"linkText"`
+	LinkDescription string `yaml:"linkDescription"`
 }
 
 const JOIN_VALUE_VAR_REGX string = "\\${1}\\{{1}\\w+\\}{1}"
