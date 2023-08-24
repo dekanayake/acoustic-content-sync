@@ -195,7 +195,8 @@ func (c contentCopyUserCase) updateDependencyRefs(elements map[string]api.Elemen
 					updatedReferenceList = append(updatedReferenceList, reference)
 				}
 			}
-			multiReferenceElementToUpdate.Values = referencesList
+			multiReferenceElementToUpdate.Values = updatedReferenceList
+			elements[name] = multiReferenceElementToUpdate
 		}
 
 		if element.Type() == "GroupElement" {
@@ -209,6 +210,7 @@ func (c contentCopyUserCase) updateDependencyRefs(elements map[string]api.Elemen
 				return nil, errors.ErrorWithStack(err)
 			}
 			groupElementToUpdate.Value = c.convertElementToInterfaceMap(updatedGroupElement)
+			elements[name] = groupElementToUpdate
 		}
 
 		if element.Type() == "MultiGroupElement" {
@@ -227,6 +229,7 @@ func (c contentCopyUserCase) updateDependencyRefs(elements map[string]api.Elemen
 				updatedGroupElementList = append(updatedGroupElementList, c.convertElementToInterfaceMap(updatedGroupElement))
 			}
 			groupElementToUpdate.Values = updatedGroupElementList
+			elements[name] = groupElementToUpdate
 		}
 	}
 	return elements, nil
@@ -265,7 +268,7 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 		}
 		originalContentID := content.ID
 		clonedContent, err := c.cloneContent(content, childReferences)
-		clonedContent.Name = clonedContent.Name + "_cloned"
+		clonedContent.Name = content.Name + "_cloned"
 		contentAuthoringResponse, err := c.contentClient.Create(*clonedContent)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)

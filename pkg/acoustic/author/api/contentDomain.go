@@ -115,7 +115,7 @@ type Content struct {
 	Type      string                 `json:"type"`
 	Status    string                 `json:"status"`
 	Elements  map[string]interface{} `json:"elements"`
-	LibraryID string                 `json:"libraryId"`
+	LibraryID string                 `json:"libraryId,omitempty"`
 	Tags      []string               `json:"tags"`
 }
 
@@ -263,9 +263,9 @@ type BooleanElement struct {
 }
 
 type LinkElement struct {
-	LinkURL   string `json:"linkURL"`
-	LinkText  string `json:"linkText"`
-	LinkTitle string `json:"linkTitle"`
+	LinkURL   string `json:"linkURL,omitempty"`
+	LinkText  string `json:"linkText,omitempty"`
+	LinkTitle string `json:"linkTitle,omitempty"`
 	element
 }
 
@@ -280,7 +280,7 @@ func (m MultiLinkElement) ToCSV(childFields map[string]interface{}) (CSVValues, 
 }
 
 type DateElement struct {
-	Value string `json:"value"`
+	Value string `json:"value,omitempty"`
 	element
 }
 
@@ -367,7 +367,7 @@ type OptionSelectionElement struct {
 }
 
 type DateTimeElement struct {
-	Value string `json:"value"`
+	Value string `json:"value,omitempty"`
 	element
 }
 
