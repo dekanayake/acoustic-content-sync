@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"strings"
+	"time"
 )
 
 type Operation string
@@ -107,6 +108,19 @@ type Tags struct {
 	Values []string `json:"values"`
 }
 
+type AcousticTime struct {
+	time.Time
+}
+
+func (t *AcousticTime) UnmarshalJSON(b []byte) (err error) {
+	date, err := time.Parse(`"2023-07-18T03:52:02.954Z"`, string(b))
+	if err != nil {
+		return err
+	}
+	t.Time = date
+	return
+}
+
 type Content struct {
 	ID        string                 `json:"id,omitempty"`
 	REV       string                 `json:"rev,omitempty"`
@@ -117,6 +131,7 @@ type Content struct {
 	Elements  map[string]interface{} `json:"elements"`
 	LibraryID string                 `json:"libraryId,omitempty"`
 	Tags      []string               `json:"tags"`
+	Created   AcousticTime           `json:"created,omitempty"`
 }
 
 type SitePage struct {

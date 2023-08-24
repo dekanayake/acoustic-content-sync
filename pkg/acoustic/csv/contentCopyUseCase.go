@@ -5,7 +5,11 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/golang-collections/collections/stack"
+	log "github.com/sirupsen/logrus"
 	"sort"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type contentCopyUserCase struct {
@@ -279,15 +283,71 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 }
 
 func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, error) {
-	parentContent, err := c.contentClient.Get(id)
+	parentContentContainer, err := c.prepareContentRefTree(id)
 	if err != nil {
 		return nil, err
 	}
+	levelsMap := c.getLevels(parentContentContainer)
+	var levels []int
+	for level := range levelsMap {
+		levels = append(levels, level)
+	}
+	clonedStartedTime := time.Now()
+	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
+	childRefMap := make(map[string]string, 0)
+	for _, level := range levels {
+		childRefMap, err = c.clone(levelsMap[level], childRefMap)
+		if err != nil {
+			return nil, err
+		}
+	}
+	clonedRootContentID := childRefMap[id]
+	valid, err := c.verifyCloneContents(clonedRootContentID, clonedStartedTime)
+	if err != nil {
+		return nil, err
+	}
+	log.Info(" cloned validation status :" + strconv.FormatBool(valid))
+	return nil, nil
+}
+
+func (c contentCopyUserCase) verifyCloneContents(id string, cloneStartedTime time.Time) (bool, error) {
+	parentContentContainer, err := c.prepareContentRefTree(id)
+	if err != nil {
+		return false, err
+	}
 	contentStack := stack.New()
+	contentStack.Push(parentContentContainer)
+	var isCorrectlyCloned bool = true
+	for contentStack.Peek() != nil {
+		parentContentContainer := contentStack.Pop().(*contentContainer)
+		parentContent, err := c.contentClient.Get(parentContentContainer.id)
+		if err != nil {
+			return false, err
+		}
+		isCorrectlyCloned = strings.Contains(parentContent.Name, "_cloned") && parentContent.Created.After(cloneStartedTime) && isCorrectlyCloned
+		if !isCorrectlyCloned {
+			log.Info("Content not cloned correctly , id :" + parentContent.ID + " , name : " + parentContent.Name + " , createdTime: " + parentContent.Created.Format("Mon Jan 2 15:04:05 2006"))
+		}
+		childrenContentContainersMap := parentContentContainer.children
+		for _, childrenContentContainers := range childrenContentContainersMap {
+			for _, childrenContentContainer := range childrenContentContainers {
+				contentStack.Push(childrenContentContainer)
+			}
+		}
+	}
+	return isCorrectlyCloned, nil
+}
+
+func (c contentCopyUserCase) prepareContentRefTree(parentContentID string) (*contentContainer, error) {
+	parentContent, err := c.contentClient.Get(parentContentID)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
 	parentContentContainer := contentContainer{
 		id:       parentContent.ID,
 		children: make(map[string][]*contentContainer),
 	}
+	contentStack := stack.New()
 	contentStack.Push(&parentContentContainer)
 	for contentStack.Peek() != nil {
 		parentContentInStack := contentStack.Pop().(*contentContainer)
@@ -297,7 +357,7 @@ func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, err
 		}
 		childReference, err := c.getChildReference(parentContent.Elements)
 		if err != nil {
-			return nil, err
+			return nil, errors.ErrorWithStack(err)
 		}
 		for name, childRefContents := range childReference {
 			childRefContentContainers := make([]*contentContainer, 0)
@@ -313,18 +373,5 @@ func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, err
 			parentContentInStack.children[name] = childRefContentContainers
 		}
 	}
-	levelsMap := c.getLevels(&parentContentContainer)
-	var levels []int
-	for level := range levelsMap {
-		levels = append(levels, level)
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
-	childRefMap := make(map[string]string, 0)
-	for _, level := range levels {
-		childRefMap, err = c.clone(levelsMap[level], childRefMap)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return nil, nil
+	return &parentContentContainer, nil
 }
