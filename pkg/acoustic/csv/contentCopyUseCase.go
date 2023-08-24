@@ -5,8 +5,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/acoustic/author/api"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/golang-collections/collections/stack"
-	log "github.com/sirupsen/logrus"
-	"reflect"
+	"sort"
 )
 
 type contentCopyUserCase struct {
@@ -44,7 +43,7 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 			existingElement = element.(api.Element)
 		}
 
-		if reflect.TypeOf(existingElement).Name() == "ReferenceElement" {
+		if existingElement.Type() == "ReferenceElement" {
 			id := existingElement.(api.ReferenceElement).Value.ID
 			referenceContent, err := c.contentClient.Get(id)
 			if err != nil {
@@ -53,7 +52,7 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 			result[name] = []*api.Content{referenceContent}
 		}
 
-		if reflect.TypeOf(existingElement).Name() == "MultiReferenceElement" {
+		if existingElement.Type() == "MultiReferenceElement" {
 			idValues := existingElement.(api.MultiReferenceElement).Values
 			childReferenceContentList := make([]*api.Content, 0)
 			for _, idValue := range idValues {
@@ -66,7 +65,7 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 			result[name] = childReferenceContentList
 		}
 
-		if reflect.TypeOf(existingElement).Name() == "GroupElement" {
+		if existingElement.Type() == "GroupElement" {
 			groupElements := existingElement.(api.GroupElement).Value
 			groupElementRefChilds, err := c.getChildReference(groupElements)
 			if err != nil {
@@ -78,7 +77,7 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 			}
 		}
 
-		if reflect.TypeOf(existingElement).Name() == "MultiGroupElement" {
+		if existingElement.Type() == "MultiGroupElement" {
 			groupElementsList := existingElement.(api.MultiGroupElement).Values
 			for _, groupElement := range groupElementsList {
 				groupElementRefChilds, err := c.getChildReference(groupElement)
@@ -141,6 +140,141 @@ func (c contentCopyUserCase) getLevels(content *contentContainer) map[int][]*con
 	return output
 }
 
+func (c contentCopyUserCase) cloneContentElements(content *api.Content) (*api.Content, error) {
+	elements := content.Elements
+	for fieldName, element := range elements {
+		existingElement, err := api.Convert(element.(map[string]interface{}))
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		clonedElement, err := existingElement.Clone()
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		content.Elements[fieldName] = clonedElement
+	}
+	return content, nil
+}
+
+func (c contentCopyUserCase) convertElementToInterfaceMap(elementsMap map[string]api.Element) map[string]interface{} {
+	elementToInterfaceMap := make(map[string]interface{}, 0)
+	for name, groupElement := range elementsMap {
+		elementToInterfaceMap[name] = groupElement.(interface{})
+	}
+	return elementToInterfaceMap
+}
+
+func (c contentCopyUserCase) convertElementInterfaceToElementMap(elementsMap map[string]interface{}) map[string]api.Element {
+	elementToInterfaceMap := make(map[string]api.Element, 0)
+	for name, groupElement := range elementsMap {
+		elementToInterfaceMap[name] = groupElement.(api.Element)
+	}
+	return elementToInterfaceMap
+}
+
+func (c contentCopyUserCase) updateDependencyRefs(elements map[string]api.Element, childReferences map[string]string) (map[string]api.Element, error) {
+	for name, element := range elements {
+		if element.Type() == "ReferenceElement" {
+			referenceElementToUpdate := element.(api.ReferenceElement)
+			refId := referenceElementToUpdate.Value.ID
+			updatedRefID, mappingRefAvailable := childReferences[refId]
+			if mappingRefAvailable {
+				referenceElementToUpdate.Value.ID = updatedRefID
+				elements[name] = referenceElementToUpdate
+			}
+		}
+
+		if element.Type() == "MultiReferenceElement" {
+			multiReferenceElementToUpdate := element.(api.MultiReferenceElement)
+			referencesList := multiReferenceElementToUpdate.Values
+			updatedReferenceList := make([]api.ReferenceValue, 0)
+			for _, reference := range referencesList {
+				updatedRefID, mappingRefAvailable := childReferences[reference.ID]
+				if mappingRefAvailable {
+					reference.ID = updatedRefID
+					updatedReferenceList = append(updatedReferenceList, reference)
+				}
+			}
+			multiReferenceElementToUpdate.Values = referencesList
+		}
+
+		if element.Type() == "GroupElement" {
+			groupElementToUpdate := element.(api.GroupElement)
+			groupElements := make(map[string]api.Element, 0)
+			for name, element := range groupElementToUpdate.Value {
+				groupElements[name] = element.(api.Element)
+			}
+			updatedGroupElement, err := c.updateDependencyRefs(groupElements, childReferences)
+			if err != nil {
+				return nil, errors.ErrorWithStack(err)
+			}
+			groupElementToUpdate.Value = c.convertElementToInterfaceMap(updatedGroupElement)
+		}
+
+		if element.Type() == "MultiGroupElement" {
+			groupElementToUpdate := element.(api.MultiGroupElement)
+			groupElements := make(map[string]api.Element, 0)
+			groupElementList := groupElementToUpdate.Values
+			updatedGroupElementList := make([]map[string]interface{}, 0)
+			for _, groupValue := range groupElementList {
+				for name, element := range groupValue {
+					groupElements[name] = element.(api.Element)
+				}
+				updatedGroupElement, err := c.updateDependencyRefs(groupElements, childReferences)
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				updatedGroupElementList = append(updatedGroupElementList, c.convertElementToInterfaceMap(updatedGroupElement))
+			}
+			groupElementToUpdate.Values = updatedGroupElementList
+		}
+	}
+	return elements, nil
+}
+
+func (c contentCopyUserCase) cloneContent(content *api.Content, childReferences map[string]string) (*api.Content, error) {
+	clonedContent, err := c.cloneContentElements(content)
+	clonedContent.ID = ""
+	clonedContent.REV = ""
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	updatedElements, err := c.updateDependencyRefs(c.convertElementInterfaceToElementMap(clonedContent.Elements), childReferences)
+	if err != nil {
+		return nil, errors.ErrorWithStack(err)
+	}
+	clonedContent.Elements = c.convertElementToInterfaceMap(updatedElements)
+	return &api.Content{
+		Elements:  clonedContent.Elements,
+		Status:    clonedContent.Status,
+		TypeId:    clonedContent.TypeId,
+		LibraryID: clonedContent.LibraryID,
+		Tags:      clonedContent.Tags,
+	}, nil
+}
+
+func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string) (map[string]string, error) {
+	if childReferences == nil {
+		childReferences = make(map[string]string, 0)
+	}
+	clonedParentReferences := make(map[string]string, 0)
+	for _, contentContainer := range contentContainerList {
+		content, err := c.contentClient.Get(contentContainer.id)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		originalContentID := content.ID
+		clonedContent, err := c.cloneContent(content, childReferences)
+		clonedContent.Name = clonedContent.Name + "_cloned"
+		contentAuthoringResponse, err := c.contentClient.Create(*clonedContent)
+		if err != nil {
+			return nil, errors.ErrorWithStack(err)
+		}
+		clonedParentReferences[originalContentID] = contentAuthoringResponse.Id
+	}
+	return clonedParentReferences, nil
+}
+
 func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, error) {
 	parentContent, err := c.contentClient.Get(id)
 	if err != nil {
@@ -177,6 +311,17 @@ func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, err
 		}
 	}
 	levelsMap := c.getLevels(&parentContentContainer)
-	log.Info(levelsMap)
+	var levels []int
+	for level := range levelsMap {
+		levels = append(levels, level)
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
+	childRefMap := make(map[string]string, 0)
+	for _, level := range levels {
+		childRefMap, err = c.clone(levelsMap[level], childRefMap)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return nil, nil
 }

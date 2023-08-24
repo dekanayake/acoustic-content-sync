@@ -188,7 +188,8 @@ type Element interface {
 	UpdateChildElement(key string, updatedElement Element) error
 	ToCSV(childFields map[string]interface{}) (CSVValues, error)
 	GetOperation() Operation
-	Type() AcousticFieldType
+	Type() string
+	Clone() (Element, error)
 }
 
 type element struct {
@@ -196,7 +197,6 @@ type element struct {
 	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
 	PreContentUpdateFunctionList []PreContentUpdateFunc `json:"-"`
 	Operation                    Operation              `json:"-"`
-	ID                           string                 `json:"id"`
 }
 
 type TextElement struct {
@@ -423,14 +423,6 @@ type ContentAuthoringError struct {
 
 func (element element) Convert(data interface{}) (Element, error) {
 	return nil, errors.ErrorMessageWithStack("Not implementd need to override in extending elements")
-}
-
-func (element element) Type() AcousticFieldType {
-	return element.ElementType
-}
-
-func (element element) IsMulti() bool {
-	return false
 }
 
 func Build(fieldType string) (Element, error) {
