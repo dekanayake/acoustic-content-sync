@@ -208,7 +208,7 @@ type Element interface {
 }
 
 type element struct {
-	ElementType                  AcousticFieldType      `json:"elementType"`
+	ElementType                  AcousticFieldType      `json:"elementType,omitempty"`
 	PreContentCreateFunctionList []PreContentCreateFunc `json:"-"`
 	PreContentUpdateFunctionList []PreContentUpdateFunc `json:"-"`
 	Operation                    Operation              `json:"-"`
@@ -362,12 +362,12 @@ type MultiGroupElement struct {
 }
 
 type ReferenceElement struct {
-	Value ReferenceValue `json:"value"`
+	Value *ReferenceValue `json:"value,omitempty"`
 	element
 }
 
 type MultiReferenceElement struct {
-	Values []ReferenceValue `json:"values"`
+	Values []ReferenceValue `json:"values,omitempty"`
 	element
 }
 
@@ -387,7 +387,7 @@ type DateTimeElement struct {
 }
 
 type ReferenceValue struct {
-	ID string `json:"id"`
+	ID string `json:"id,omitempty"`
 }
 
 type OptionSelectionValue struct {

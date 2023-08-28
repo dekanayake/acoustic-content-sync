@@ -19,7 +19,7 @@ type siteUseCase struct {
 }
 
 func (s siteUseCase) CreatePageForContent(siteId string, parentPageId string, contentID string, relativePath string) (string, error) {
-	return s.CreatePageForContent(siteId, parentPageId, contentID, relativePath)
+	return s.siteService.CreatePageForContent(siteId, parentPageId, contentID, relativePath)
 }
 
 func NewSiteUseCase(acousticAuthApiUrl string) SiteUseCase {

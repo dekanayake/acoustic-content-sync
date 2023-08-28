@@ -158,8 +158,10 @@ func (element MultiGroupElement) Clone() (Element, error) {
 func (element ReferenceElement) Clone() (Element, error) {
 	clonedElement := ReferenceElement{}
 	clonedElement.ElementType = element.ElementType
-	clonedElement.Value = ReferenceValue{
-		ID: element.Value.ID,
+	if element.Value != nil && element.Value.ID != "" {
+		clonedElement.Value = &ReferenceValue{
+			ID: element.Value.ID,
+		}
 	}
 	return clonedElement, nil
 }

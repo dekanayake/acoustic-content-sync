@@ -93,7 +93,8 @@ func createSitePages(siteId string, parentPageId string, contentType string, dat
 	}
 }
 
-func createPageForContent(siteId string, parentPageId string, contentID string, relativeUrl string) {
+func createPageForContent(siteId string, parentPageId string, contentID string, contentType string, relativeUrl string) {
+	os.Setenv("ParentPageContentTypeID", contentType)
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	siteUseCase := csv.NewSiteUseCase(os.Getenv("AcousticAPIURL"))
 	createdPageID, err := siteUseCase.CreatePageForContent(siteId, parentPageId, contentID, relativeUrl)
@@ -103,10 +104,10 @@ func createPageForContent(siteId string, parentPageId string, contentID string, 
 	}
 }
 
-func clone(id string, libraryID string) {
+func clone(id string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	copyUseCase := csv.NewContentCopyUserCase(os.Getenv("AcousticAPIURL"))
-	_, err := copyUseCase.CopyContent(id, libraryID)
+	_, err := copyUseCase.CopyContent(id)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
@@ -174,7 +175,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	if len(strings.TrimSpace(*acousticLibraryID)) == 0 && *contentOperation != "CREATE_CATEGORY" && *contentOperation != "CREATE_SITE_PAGE_FOR_CONTENT" {
+	if len(strings.TrimSpace(*acousticLibraryID)) == 0 && *contentOperation != "CREATE_CATEGORY" && *contentOperation != "CREATE_SITE_PAGE_FOR_CONTENT" && *contentOperation != "CLONE_CONTENT" {
 		log.Error("Please provide the Acoustic Library ID")
 		os.Exit(1)
 	} else {
@@ -191,6 +192,31 @@ func execute() {
 		os.Exit(1)
 	}
 
+	if len(strings.TrimSpace(*contentIDForPage)) == 0 && *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
+		log.Error("Please provide the Content ID")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*relativeUrlOfPage)) == 0 && *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
+		log.Error("Please provide the Relative URL")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*siteId)) == 0 && *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
+		log.Error("Please provide the Sit ID")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*parentPageID)) == 0 && *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
+		log.Error("Please provide the Parent page ID")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*contentTypeID)) == 0 && *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
+		log.Error("Please provide the Content Type")
+		os.Exit(1)
+	}
+
 	if *contentOperation == "CREATE" || *contentOperation == "UPDATE" {
 		createOrUpdateContents(*feedLocation, *configLocation, *acousticLibraryID, *contentTypeID)
 	} else if *contentOperation == "READ" {
@@ -202,9 +228,9 @@ func execute() {
 	} else if *contentOperation == "CREATE_SITE_PAGES" {
 		createSitePages(*siteId, *parentPageID, *contentTypeID, *feedLocation, *configLocation)
 	} else if *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
-		createPageForContent(*siteId, *parentPageID, *contentIDForPage, *relativeUrlOfPage)
+		createPageForContent(*siteId, *parentPageID, *contentIDForPage, *contentTypeID, *relativeUrlOfPage)
 	} else if *contentOperation == "CLONE_CONTENT" {
-		clone(*idToClone, *acousticLibraryID)
+		clone(*idToClone)
 	} else {
 		log.Error("Please provide the Content Operation (CREATE for create , UPDATE for update , READ for read , provided operation : {}", *contentOperation)
 		os.Exit(1)

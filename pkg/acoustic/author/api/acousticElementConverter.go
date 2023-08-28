@@ -366,6 +366,27 @@ var multiReferenceElementConverter = acousticElementConvertor{
 	}),
 }
 
+var referenceElementConverter = acousticElementConvertor{
+	elementFactMatcher: elementMatcherFunc(func(fieldType AcousticFieldType) bool {
+		return fieldType == AcousticFieldType(AcousticFieldReference)
+	}),
+	isMultiMatcher: isMultiMatcherFunc(func() bool {
+		return false
+	}),
+	convert: convertFunc(func(acousticElement map[string]interface{}) (Element, error) {
+		jsonString, err := json.Marshal(acousticElement)
+		if err != nil {
+			return nil, err
+		}
+		element := ReferenceElement{}
+		err = json.Unmarshal(jsonString, &element)
+		if err != nil {
+			return nil, err
+		}
+		return element, nil
+	}),
+}
+
 var converterList = make([]acousticElementConvertor, 0)
 
 func init() {
@@ -373,6 +394,7 @@ func init() {
 		textElementConverter,
 		formattedTextElementConverter,
 		numberElementConverter,
+		referenceElementConverter,
 		multiReferenceElementConverter,
 		groupElementConverter,
 		multiGroupElementConverter,
@@ -411,7 +433,7 @@ func Convert(acousticElementData map[string]interface{}) (Element, error) {
 				return converted, nil
 			}
 
-			if !multiOk {
+			if !multiOk && !converter.isMultiMatcher() {
 				converted, err := converter.convert(acousticElementData)
 				if err != nil {
 					return nil, err

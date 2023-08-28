@@ -1153,7 +1153,7 @@ func (element ReferenceElement) Convert(data interface{}) (Element, error) {
 		value.ID = searchResponse.Documents[0].Document.ID
 	}
 
-	element.Value = value
+	element.Value = &value
 	return element, nil
 }
 

@@ -17,7 +17,7 @@ type contentCopyUserCase struct {
 }
 
 type ContentCopyUserCase interface {
-	CopyContent(id string, libraryID string) (*ContentCreationStatus, error)
+	CopyContent(id string) (*ContentCreationStatus, error)
 }
 
 func NewContentCopyUserCase(acousticAuthApiUrl string) ContentCopyUserCase {
@@ -48,12 +48,14 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 		}
 
 		if existingElement.Type() == "ReferenceElement" {
-			id := existingElement.(api.ReferenceElement).Value.ID
-			referenceContent, err := c.contentClient.Get(id)
-			if err != nil {
-				return nil, errors.ErrorWithStack(err)
+			value := existingElement.(api.ReferenceElement).Value
+			if value != nil && value.ID != "" {
+				referenceContent, err := c.contentClient.Get(value.ID)
+				if err != nil {
+					return nil, errors.ErrorWithStack(err)
+				}
+				result[name] = []*api.Content{referenceContent}
 			}
-			result[name] = []*api.Content{referenceContent}
 		}
 
 		if existingElement.Type() == "MultiReferenceElement" {
@@ -180,11 +182,13 @@ func (c contentCopyUserCase) updateDependencyRefs(elements map[string]api.Elemen
 	for name, element := range elements {
 		if element.Type() == "ReferenceElement" {
 			referenceElementToUpdate := element.(api.ReferenceElement)
-			refId := referenceElementToUpdate.Value.ID
-			updatedRefID, mappingRefAvailable := childReferences[refId]
-			if mappingRefAvailable {
-				referenceElementToUpdate.Value.ID = updatedRefID
-				elements[name] = referenceElementToUpdate
+			if referenceElementToUpdate.Value != nil {
+				refId := referenceElementToUpdate.Value.ID
+				updatedRefID, mappingRefAvailable := childReferences[refId]
+				if mappingRefAvailable {
+					referenceElementToUpdate.Value.ID = updatedRefID
+					elements[name] = referenceElementToUpdate
+				}
 			}
 		}
 
@@ -260,7 +264,7 @@ func (c contentCopyUserCase) cloneContent(content *api.Content, childReferences 
 	}, nil
 }
 
-func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string, libraryID string) (map[string]string, error) {
+func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string) (map[string]string, error) {
 	if childReferences == nil {
 		childReferences = make(map[string]string, 0)
 	}
@@ -273,9 +277,6 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 		originalContentID := content.ID
 		clonedContent, err := c.cloneContent(content, childReferences)
 		clonedContent.Name = content.Name + "_cloned"
-		if libraryID != "" {
-			clonedContent.LibraryID = libraryID
-		}
 		contentAuthoringResponse, err := c.contentClient.Create(*clonedContent)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
@@ -285,7 +286,7 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 	return clonedParentReferences, nil
 }
 
-func (c contentCopyUserCase) CopyContent(id string, libraryID string) (*ContentCreationStatus, error) {
+func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, error) {
 	parentContentContainer, err := c.prepareContentRefTree(id)
 	if err != nil {
 		return nil, err
@@ -299,7 +300,7 @@ func (c contentCopyUserCase) CopyContent(id string, libraryID string) (*ContentC
 	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
 	childRefMap := make(map[string]string, 0)
 	for _, level := range levels {
-		childRefMap, err = c.clone(levelsMap[level], childRefMap, libraryID)
+		childRefMap, err = c.clone(levelsMap[level], childRefMap)
 		if err != nil {
 			return nil, err
 		}
