@@ -86,8 +86,10 @@ func (element ImageElement) Clone() (Element, error) {
 	clonedElement := ImageElement{}
 	clonedElement.ElementType = element.ElementType
 	clonedElement.Mode = element.Mode
-	clonedElement.Asset = Asset{
-		ID: element.Asset.ID,
+	if element.Asset != nil {
+		clonedElement.Asset = &Asset{
+			ID: element.Asset.ID,
+		}
 	}
 	return clonedElement, nil
 }
@@ -99,8 +101,10 @@ func (element MultiImageElement) Clone() (Element, error) {
 	for _, imageElement := range element.Values {
 		clonedImageElement := ImageElementItem{}
 		clonedImageElement.Mode = imageElement.Mode
-		clonedImageElement.Asset = Asset{
-			ID: imageElement.Asset.ID,
+		if imageElement.Asset != nil {
+			clonedImageElement.Asset = &Asset{
+				ID: imageElement.Asset.ID,
+			}
 		}
 		imageElements = append(imageElements, clonedImageElement)
 	}
@@ -175,8 +179,10 @@ func (element MultiReferenceElement) Clone() (Element, error) {
 func (element OptionSelectionElement) Clone() (Element, error) {
 	clonedElement := OptionSelectionElement{}
 	clonedElement.ElementType = element.ElementType
-	clonedElement.Value = OptionSelectionValue{
-		Selection: element.Value.Selection,
+	if element.Value != nil && element.Value.Selection != "" {
+		clonedElement.Value = &OptionSelectionValue{
+			Selection: element.Value.Selection,
+		}
 	}
 	return clonedElement, nil
 }
@@ -184,11 +190,13 @@ func (element OptionSelectionElement) Clone() (Element, error) {
 func (element MultiOptionSelectionElement) Clone() (Element, error) {
 	clonedElement := MultiOptionSelectionElement{}
 	clonedElement.ElementType = element.ElementType
-	clonedElement.Values = make([]OptionSelectionValue, 0)
+	clonedElement.Values = make([]*OptionSelectionValue, 0)
 	for _, existingOptionSelectionValue := range clonedElement.Values {
-		clonedElement.Values = append(clonedElement.Values, OptionSelectionValue{
-			Selection: existingOptionSelectionValue.Selection,
-		})
+		if existingOptionSelectionValue != nil && existingOptionSelectionValue.Selection != "" {
+			clonedElement.Values = append(clonedElement.Values, &OptionSelectionValue{
+				Selection: existingOptionSelectionValue.Selection,
+			})
+		}
 	}
 	return clonedElement, nil
 }

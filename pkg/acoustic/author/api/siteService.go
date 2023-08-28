@@ -20,6 +20,7 @@ const (
 
 type SiteService interface {
 	CreatePageWithRetry(siteId string, parentPageId string, record AcousticDataRecord) (PageCreationStatus, *SitePageResponse, error)
+	CreatePageForContent(siteId string, parentPageId string, contentID string, relativePath string) (string, error)
 }
 
 type siteService struct {
@@ -32,6 +33,26 @@ func NewSiteService(acousticAuthApiUrl string) SiteService {
 		acousticAuthApiUrl: acousticAuthApiUrl,
 		sitePageClient:     NewSitePageClient(acousticAuthApiUrl),
 	}
+}
+
+func (service *siteService) CreatePageForContent(siteId string, parentPageId string, contentID string, relativePath string) (string, error) {
+	currentParentPageId, err := service.createParentPages(siteId, parentPageId, relativePath)
+	if err != nil {
+		return "", err
+	}
+	segments := strings.Split(relativePath, "/")
+	lastPageSegment := segments[len(segments)-1]
+	pageToCreate := SitePage{
+		Name:      &lastPageSegment,
+		ContentId: &contentID,
+		ParentId:  &currentParentPageId,
+		Segment:   &lastPageSegment,
+	}
+	createdPage, err := service.sitePageClient.Create(siteId, pageToCreate)
+	if err != nil {
+		return "", errors.ErrorWithStack(err)
+	}
+	return createdPage.ID, nil
 }
 
 func (service *siteService) CreatePageWithRetry(siteId string, parentPageId string, record AcousticDataRecord) (PageCreationStatus, *SitePageResponse, error) {
@@ -59,7 +80,7 @@ func (service *siteService) CreatePageWithRetry(siteId string, parentPageId stri
 	return status, response, err
 }
 
-func (service *siteService) createParentPages(siteId string, parentPageID string, url string, contentID string) (string, error) {
+func (service *siteService) createParentPages(siteId string, parentPageID string, url string) (string, error) {
 	segments := strings.Split(url, "/")
 	var currentParentPageId = parentPageID
 	for _, segment := range segments[:len(segments)-1] {
@@ -250,7 +271,7 @@ func (service *siteService) createPage(siteId string, parentPageId string, recor
 	if searchResponse.Count == 0 {
 		return "", nil, errors.ErrorMessageWithStack("The content provided is not available")
 	} else {
-		currentParentPageId, err := service.createParentPages(siteId, parentPageId, acousticContentData["url"], searchResponse.Documents[0].Document.ID)
+		currentParentPageId, err := service.createParentPages(siteId, parentPageId, acousticContentData["url"])
 		if err != nil {
 			return "", nil, errors.ErrorWithStack(err)
 		}

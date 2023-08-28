@@ -304,9 +304,9 @@ func (element OptionSelectionElement) Convert(data interface{}) (Element, error)
 func (element MultiOptionSelectionElement) Convert(data interface{}) (Element, error) {
 	options := strings.Split(data.(GenericData).Value.(string), env.MultipleItemsSeperator())
 	options = funk.UniqString(options)
-	optionSelections := make([]OptionSelectionValue, 0)
+	optionSelections := make([]*OptionSelectionValue, 0)
 	for _, option := range options {
-		optionSelections = append(optionSelections, OptionSelectionValue{
+		optionSelections = append(optionSelections, &OptionSelectionValue{
 			Selection: option,
 		})
 	}
@@ -689,7 +689,7 @@ func (element MultiImageElement) Convert(data interface{}) (Element, error) {
 			}
 
 			assets = append(assets, ImageElementItem{
-				Asset: Asset{
+				Asset: &Asset{
 					ID: id,
 				},
 				Mode: "shared",
@@ -726,7 +726,7 @@ func (element MultiImageElement) Convert(data interface{}) (Element, error) {
 			}
 
 			assets = append(assets, ImageElementItem{
-				Asset: Asset{
+				Asset: &Asset{
 					ID: id,
 				},
 				Mode: "shared",
@@ -755,7 +755,7 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 			return nil, nil
 		}
 
-		element.Asset = Asset{
+		element.Asset = &Asset{
 			ID: id,
 		}
 		element.Mode = "shared"
@@ -773,7 +773,7 @@ func (element ImageElement) Convert(data interface{}) (Element, error) {
 			defer cleanUpFunc()
 		}
 
-		element.Asset = Asset{
+		element.Asset = &Asset{
 			ID: id,
 		}
 		element.Mode = "shared"

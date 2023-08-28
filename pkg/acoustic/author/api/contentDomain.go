@@ -113,9 +113,9 @@ type AcousticTime struct {
 }
 
 func (t *AcousticTime) UnmarshalJSON(b []byte) (err error) {
-	date, err := time.Parse(`"2023-07-18T03:52:02.954Z"`, string(b))
+	date, err := time.Parse(time.RFC3339Nano, strings.ReplaceAll(string(b), "\"", ""))
 	if err != nil {
-		return err
+		return errors.ErrorWithStack(err)
 	}
 	t.Time = date
 	return
@@ -312,7 +312,7 @@ type CategoryPartElement struct {
 
 type ImageElementItem struct {
 	Mode  string `json:"mode"`
-	Asset Asset  `json:"asset"`
+	Asset *Asset `json:"asset,omitempty"`
 	URL   string `json:"url,omitempty"`
 }
 
@@ -372,12 +372,12 @@ type MultiReferenceElement struct {
 }
 
 type MultiOptionSelectionElement struct {
-	Values []OptionSelectionValue `json:"values"`
+	Values []*OptionSelectionValue `json:"values,omitempty"`
 	element
 }
 
 type OptionSelectionElement struct {
-	Value OptionSelectionValue `json:"value"`
+	Value *OptionSelectionValue `json:"value,omitempty"`
 	element
 }
 
@@ -391,11 +391,11 @@ type ReferenceValue struct {
 }
 
 type OptionSelectionValue struct {
-	Selection string `json:"selection"`
+	Selection string `json:"selection,omitempty"`
 }
 
 type Asset struct {
-	ID string `json:"id"`
+	ID string `json:"id,omitempty"`
 }
 
 type ContentAutheringResponse struct {

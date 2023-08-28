@@ -17,7 +17,7 @@ type contentCopyUserCase struct {
 }
 
 type ContentCopyUserCase interface {
-	CopyContent(id string) (*ContentCreationStatus, error)
+	CopyContent(id string, libraryID string) (*ContentCreationStatus, error)
 }
 
 func NewContentCopyUserCase(acousticAuthApiUrl string) ContentCopyUserCase {
@@ -260,7 +260,7 @@ func (c contentCopyUserCase) cloneContent(content *api.Content, childReferences 
 	}, nil
 }
 
-func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string) (map[string]string, error) {
+func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string, libraryID string) (map[string]string, error) {
 	if childReferences == nil {
 		childReferences = make(map[string]string, 0)
 	}
@@ -273,6 +273,9 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 		originalContentID := content.ID
 		clonedContent, err := c.cloneContent(content, childReferences)
 		clonedContent.Name = content.Name + "_cloned"
+		if libraryID != "" {
+			clonedContent.LibraryID = libraryID
+		}
 		contentAuthoringResponse, err := c.contentClient.Create(*clonedContent)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
@@ -282,7 +285,7 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 	return clonedParentReferences, nil
 }
 
-func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, error) {
+func (c contentCopyUserCase) CopyContent(id string, libraryID string) (*ContentCreationStatus, error) {
 	parentContentContainer, err := c.prepareContentRefTree(id)
 	if err != nil {
 		return nil, err
@@ -296,7 +299,7 @@ func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, err
 	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
 	childRefMap := make(map[string]string, 0)
 	for _, level := range levels {
-		childRefMap, err = c.clone(levelsMap[level], childRefMap)
+		childRefMap, err = c.clone(levelsMap[level], childRefMap, libraryID)
 		if err != nil {
 			return nil, err
 		}

@@ -9,12 +9,17 @@ import (
 
 type SiteUseCase interface {
 	CreatePages(siteId string, parentPageId string, contentType string, dataFeedPath string, configPath string) (ContentCreationStatus, error)
+	CreatePageForContent(siteId string, parentPageId string, contentID string, relativePath string) (string, error)
 }
 
 type siteUseCase struct {
 	acousticAuthApiUrl string
 	contentService     api.ContentService
 	siteService        api.SiteService
+}
+
+func (s siteUseCase) CreatePageForContent(siteId string, parentPageId string, contentID string, relativePath string) (string, error) {
+	return s.CreatePageForContent(siteId, parentPageId, contentID, relativePath)
 }
 
 func NewSiteUseCase(acousticAuthApiUrl string) SiteUseCase {

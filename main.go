@@ -93,10 +93,20 @@ func createSitePages(siteId string, parentPageId string, contentType string, dat
 	}
 }
 
-func clone(id string) {
+func createPageForContent(siteId string, parentPageId string, contentID string, relativeUrl string) {
+	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
+	siteUseCase := csv.NewSiteUseCase(os.Getenv("AcousticAPIURL"))
+	createdPageID, err := siteUseCase.CreatePageForContent(siteId, parentPageId, contentID, relativeUrl)
+	log.Info("Page created with ID :" + createdPageID)
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+}
+
+func clone(id string, libraryID string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	copyUseCase := csv.NewContentCopyUserCase(os.Getenv("AcousticAPIURL"))
-	_, err := copyUseCase.CopyContent(id)
+	_, err := copyUseCase.CopyContent(id, libraryID)
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}
@@ -133,6 +143,8 @@ func execute() {
 	siteId := flag.String("siteID", "", "Site ID")
 	parentPageID := flag.String("parentPageID", "", "Parent page ID")
 	idToClone := flag.String("idToClone", "", "ID to clone")
+	contentIDForPage := flag.String("contentIDForPage", "", "Content ID to create page")
+	relativeUrlOfPage := flag.String("relativeUrlOfPage", "", "Relative URL of the page")
 	flag.Parse()
 
 	log.Info("feed location :" + *feedLocation)
@@ -144,35 +156,37 @@ func execute() {
 	log.Info("Site ID :" + *siteId)
 	log.Info("Parent Page ID :" + *parentPageID)
 	log.Info("ID to clone :" + *idToClone)
+	log.Info("Content ID to create page :" + *contentIDForPage)
+	log.Info("Relative URL of the page :" + *relativeUrlOfPage)
 
 	if len(strings.TrimSpace(*contentOperation)) == 0 {
 		log.Error("Please provide the Content Operation (CREATE for create , UPDATE for update , READ for read) ")
 		os.Exit(1)
 	}
 
-	if len(strings.TrimSpace(*feedLocation)) == 0 && *contentOperation != "CLONE_CONTENT" {
+	if len(strings.TrimSpace(*feedLocation)) == 0 && *contentOperation != "CLONE_CONTENT" && *contentOperation != "CREATE_SITE_PAGE_FOR_CONTENT" {
 		log.Error("Please provide the feed location")
 		os.Exit(1)
 	}
 
-	if len(strings.TrimSpace(*configLocation)) == 0 && *contentOperation != "CLONE_CONTENT" {
+	if len(strings.TrimSpace(*configLocation)) == 0 && *contentOperation != "CLONE_CONTENT" && *contentOperation != "CREATE_SITE_PAGE_FOR_CONTENT" {
 		log.Error("Please provide the config location")
 		os.Exit(1)
 	}
 
-	if len(strings.TrimSpace(*acousticLibraryID)) == 0 && *contentOperation != "CREATE_CATEGORY" && *contentOperation != "CLONE_CONTENT" {
+	if len(strings.TrimSpace(*acousticLibraryID)) == 0 && *contentOperation != "CREATE_CATEGORY" && *contentOperation != "CREATE_SITE_PAGE_FOR_CONTENT" {
 		log.Error("Please provide the Acoustic Library ID")
 		os.Exit(1)
 	} else {
 		os.Setenv("LibraryID", strings.TrimSpace(*acousticLibraryID))
 	}
 
-	if len(strings.TrimSpace(*contentTypeID)) == 0 && *contentOperation != "CREATE_CATEGORY" && *contentOperation != "CLONE_CONTENT" {
+	if len(strings.TrimSpace(*contentTypeID)) == 0 && *contentOperation != "CREATE_CATEGORY" && *contentOperation != "CLONE_CONTENT" && *contentOperation != "CREATE_SITE_PAGE_FOR_CONTENT" {
 		log.Error("Please provide the Content Type ID")
 		os.Exit(1)
 	}
 
-	if len(strings.TrimSpace(*idToClone)) == 0 && *contentOperation != "CLONE_CONTENT" {
+	if len(strings.TrimSpace(*idToClone)) == 0 && *contentOperation == "CLONE_CONTENT" {
 		log.Error("Please provide the Content ID")
 		os.Exit(1)
 	}
@@ -187,8 +201,10 @@ func execute() {
 		createCategories(*categoryName, *feedLocation, *configLocation)
 	} else if *contentOperation == "CREATE_SITE_PAGES" {
 		createSitePages(*siteId, *parentPageID, *contentTypeID, *feedLocation, *configLocation)
+	} else if *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
+		createPageForContent(*siteId, *parentPageID, *contentIDForPage, *relativeUrlOfPage)
 	} else if *contentOperation == "CLONE_CONTENT" {
-		clone(*idToClone)
+		clone(*idToClone, *acousticLibraryID)
 	} else {
 		log.Error("Please provide the Content Operation (CREATE for create , UPDATE for update , READ for read , provided operation : {}", *contentOperation)
 		os.Exit(1)
