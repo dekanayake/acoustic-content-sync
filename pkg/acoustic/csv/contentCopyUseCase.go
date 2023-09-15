@@ -6,6 +6,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/golang-collections/collections/stack"
 	log "github.com/sirupsen/logrus"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,7 +18,7 @@ type contentCopyUserCase struct {
 }
 
 type ContentCopyUserCase interface {
-	CopyContent(id string) (*ContentCreationStatus, error)
+	CopyContent(id string, fileNamePostfix string) (*ContentCreationStatus, error)
 }
 
 func NewContentCopyUserCase(acousticAuthApiUrl string) ContentCopyUserCase {
@@ -264,7 +265,14 @@ func (c contentCopyUserCase) cloneContent(content *api.Content, childReferences 
 	}, nil
 }
 
-func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string) (map[string]string, error) {
+func (c contentCopyUserCase) getNewName(name string) string {
+	name = strings.ReplaceAll(name, "_cloned", "")
+	m1 := regexp.MustCompile(`(\_CL\:){1}\S{3}\W{1}\S{3}\W{1}\d{1}\W{1}\d{1,2}\:{1}\d{1,2}\:{1}\d{1,2}\W{1}\d{4}`)
+	return m1.ReplaceAllString(name, "")
+
+}
+
+func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, childReferences map[string]string, fileNamePostFix string) (map[string]string, error) {
 	if childReferences == nil {
 		childReferences = make(map[string]string, 0)
 	}
@@ -276,7 +284,7 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 		}
 		originalContentID := content.ID
 		clonedContent, err := c.cloneContent(content, childReferences)
-		clonedContent.Name = content.Name + "_cloned"
+		clonedContent.Name = c.getNewName(content.Name) + fileNamePostFix
 		contentAuthoringResponse, err := c.contentClient.Create(*clonedContent)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
@@ -286,7 +294,7 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 	return clonedParentReferences, nil
 }
 
-func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, error) {
+func (c contentCopyUserCase) CopyContent(id string, fileNamePostFix string) (*ContentCreationStatus, error) {
 	parentContentContainer, err := c.prepareContentRefTree(id)
 	if err != nil {
 		return nil, err
@@ -300,13 +308,13 @@ func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, err
 	sort.Sort(sort.Reverse(sort.IntSlice(levels)))
 	childRefMap := make(map[string]string, 0)
 	for _, level := range levels {
-		childRefMap, err = c.clone(levelsMap[level], childRefMap)
+		childRefMap, err = c.clone(levelsMap[level], childRefMap, fileNamePostFix)
 		if err != nil {
 			return nil, err
 		}
 	}
 	clonedRootContentID := childRefMap[id]
-	valid, err := c.verifyCloneContents(clonedRootContentID, clonedStartedTime)
+	valid, err := c.verifyCloneContents(clonedRootContentID, clonedStartedTime, fileNamePostFix)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +322,7 @@ func (c contentCopyUserCase) CopyContent(id string) (*ContentCreationStatus, err
 	return nil, nil
 }
 
-func (c contentCopyUserCase) verifyCloneContents(id string, cloneStartedTime time.Time) (bool, error) {
+func (c contentCopyUserCase) verifyCloneContents(id string, cloneStartedTime time.Time, fileNamePostfix string) (bool, error) {
 	parentContentContainer, err := c.prepareContentRefTree(id)
 	if err != nil {
 		return false, err
@@ -328,7 +336,7 @@ func (c contentCopyUserCase) verifyCloneContents(id string, cloneStartedTime tim
 		if err != nil {
 			return false, err
 		}
-		isCorrectlyCloned = strings.Contains(parentContent.Name, "_cloned") && parentContent.Created.After(cloneStartedTime) && isCorrectlyCloned
+		isCorrectlyCloned = strings.Contains(parentContent.Name, fileNamePostfix) && parentContent.Created.After(cloneStartedTime) && isCorrectlyCloned
 		if !isCorrectlyCloned {
 			log.Info("Content not cloned correctly , id :" + parentContent.ID + " , name : " + parentContent.Name + " , createdTime: " + parentContent.Created.Format("Mon Jan 2 15:04:05 2006"))
 		}

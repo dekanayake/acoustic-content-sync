@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func init() {
@@ -107,7 +108,8 @@ func createPageForContent(siteId string, parentPageId string, contentID string, 
 func clone(id string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
 	copyUseCase := csv.NewContentCopyUserCase(os.Getenv("AcousticAPIURL"))
-	_, err := copyUseCase.CopyContent(id)
+
+	_, err := copyUseCase.CopyContent(id, "_CL:"+time.Now().Format(time.ANSIC))
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}

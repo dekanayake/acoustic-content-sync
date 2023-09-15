@@ -133,6 +133,9 @@ func (element GroupElement) Clone() (Element, error) {
 		}
 		clonedElement.Value[fieldName] = clonedChildElement
 	}
+	if len(clonedElement.Value) == 0 {
+		clonedElement.Value = nil
+	}
 	return clonedElement, nil
 }
 

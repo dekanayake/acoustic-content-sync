@@ -311,7 +311,7 @@ type CategoryPartElement struct {
 }
 
 type ImageElementItem struct {
-	Mode  string `json:"mode"`
+	Mode  string `json:"mode,omitempty"`
 	Asset *Asset `json:"asset,omitempty"`
 	URL   string `json:"url,omitempty"`
 }
@@ -333,7 +333,7 @@ type FileElement struct {
 
 type GroupElement struct {
 	TypeRef map[string]string      `json:"typeRef"`
-	Value   map[string]interface{} `json:"value"`
+	Value   map[string]interface{} `json:"value,omitempty"`
 	element
 }
 
