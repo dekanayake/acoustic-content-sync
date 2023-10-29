@@ -14,16 +14,18 @@ import (
 )
 
 type contentCopyUserCase struct {
-	contentClient api.ContentClient
+	sourceContentClient api.ContentClient
+	targetContentClient api.ContentClient
 }
 
 type ContentCopyUserCase interface {
 	CopyContent(id string, fileNamePostfix string) (*ContentCreationStatus, error)
 }
 
-func NewContentCopyUserCase(acousticAuthApiUrl string) ContentCopyUserCase {
+func NewContentCopyUserCase(sourceAcousticAuthApiUrl string, sourceApiKey string, targetAcousticAuthApiUrl string, targetApiKey string) ContentCopyUserCase {
 	return &contentCopyUserCase{
-		contentClient: api.NewContentClient(acousticAuthApiUrl),
+		sourceContentClient: api.NewContentClientWithAPIKey(sourceAcousticAuthApiUrl, sourceApiKey),
+		targetContentClient: api.NewContentClientWithAPIKey(targetAcousticAuthApiUrl, targetApiKey),
 	}
 }
 
@@ -51,7 +53,7 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 		if existingElement.Type() == "ReferenceElement" {
 			value := existingElement.(api.ReferenceElement).Value
 			if value != nil && value.ID != "" {
-				referenceContent, err := c.contentClient.Get(value.ID)
+				referenceContent, err := c.sourceContentClient.Get(value.ID)
 				if err != nil {
 					return nil, errors.ErrorWithStack(err)
 				}
@@ -63,7 +65,7 @@ func (c contentCopyUserCase) getChildReference(elements map[string]interface{}) 
 			idValues := existingElement.(api.MultiReferenceElement).Values
 			childReferenceContentList := make([]*api.Content, 0)
 			for _, idValue := range idValues {
-				referenceContent, err := c.contentClient.Get(idValue.ID)
+				referenceContent, err := c.sourceContentClient.Get(idValue.ID)
 				if err != nil {
 					return nil, errors.ErrorWithStack(err)
 				}
@@ -278,14 +280,14 @@ func (c contentCopyUserCase) clone(contentContainerList []*contentContainer, chi
 	}
 	clonedParentReferences := make(map[string]string, 0)
 	for _, contentContainer := range contentContainerList {
-		content, err := c.contentClient.Get(contentContainer.id)
+		content, err := c.sourceContentClient.Get(contentContainer.id)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
 		originalContentID := content.ID
 		clonedContent, err := c.cloneContent(content, childReferences)
 		clonedContent.Name = c.getNewName(content.Name) + fileNamePostFix
-		contentAuthoringResponse, err := c.contentClient.Create(*clonedContent)
+		contentAuthoringResponse, err := c.targetContentClient.Create(*clonedContent)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}
@@ -332,7 +334,7 @@ func (c contentCopyUserCase) verifyCloneContents(id string, cloneStartedTime tim
 	var isCorrectlyCloned bool = true
 	for contentStack.Peek() != nil {
 		parentContentContainer := contentStack.Pop().(*contentContainer)
-		parentContent, err := c.contentClient.Get(parentContentContainer.id)
+		parentContent, err := c.targetContentClient.Get(parentContentContainer.id)
 		if err != nil {
 			return false, err
 		}
@@ -351,7 +353,7 @@ func (c contentCopyUserCase) verifyCloneContents(id string, cloneStartedTime tim
 }
 
 func (c contentCopyUserCase) prepareContentRefTree(parentContentID string) (*contentContainer, error) {
-	parentContent, err := c.contentClient.Get(parentContentID)
+	parentContent, err := c.sourceContentClient.Get(parentContentID)
 	if err != nil {
 		return nil, errors.ErrorWithStack(err)
 	}
@@ -363,7 +365,7 @@ func (c contentCopyUserCase) prepareContentRefTree(parentContentID string) (*con
 	contentStack.Push(&parentContentContainer)
 	for contentStack.Peek() != nil {
 		parentContentInStack := contentStack.Pop().(*contentContainer)
-		parentContent, err := c.contentClient.Get(parentContentInStack.id)
+		parentContent, err := c.sourceContentClient.Get(parentContentInStack.id)
 		if err != nil {
 			return nil, errors.ErrorWithStack(err)
 		}

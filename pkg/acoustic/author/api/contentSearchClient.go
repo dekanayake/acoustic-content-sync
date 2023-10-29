@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/wesovilabs/koazee"
 	"gopkg.in/resty.v1"
@@ -118,8 +119,9 @@ type searchClient struct {
 }
 
 func NewSearchClient(acousticApiUrl string) SearchClient {
+	apiKey := env.AcousticAPIKey()
 	return &searchClient{
-		c:              Connect(),
+		c:              Connect(apiKey),
 		acousticApiUrl: acousticApiUrl,
 	}
 }

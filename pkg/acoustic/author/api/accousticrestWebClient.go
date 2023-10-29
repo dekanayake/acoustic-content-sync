@@ -11,22 +11,21 @@ var once sync.Once
 
 var instance *resty.Client
 
-func Connect() *resty.Client {
+func Connect(apiKey string) *resty.Client {
 	if env.AlwaysCreateNewAcousticRestAPIConnection() {
 		log.Info("AlwaysCreateNewAcousticRestAPIConnection : enabled , creating a new connection ")
-		return connect()
+		return connect(apiKey)
 	} else {
 		once.Do(func() {
-			instance = connect()
+			instance = connect(apiKey)
 		})
 		return instance
 	}
 }
 
-func connect() *resty.Client {
+func connect(apiKey string) *resty.Client {
 	authUserName := env.AcousticAuthUserName()
 	password := env.AcousticAuthPassword()
-	apiKey := env.AcousticAPIKey()
 	if authUserName == "" && apiKey == "" {
 		log.Panic("No either user name of api values is provided ")
 	}

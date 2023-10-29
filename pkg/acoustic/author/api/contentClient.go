@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"gopkg.in/resty.v1"
 )
@@ -20,8 +21,16 @@ type contentClient struct {
 }
 
 func NewContentClient(acousticApiUrl string) ContentClient {
+	apiKey := env.AcousticAPIKey()
 	return &contentClient{
-		c:              Connect(),
+		c:              Connect(apiKey),
+		acousticApiUrl: acousticApiUrl,
+	}
+}
+
+func NewContentClientWithAPIKey(acousticApiUrl string, apiKey string) ContentClient {
+	return &contentClient{
+		c:              Connect(apiKey),
 		acousticApiUrl: acousticApiUrl,
 	}
 }

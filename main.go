@@ -105,9 +105,9 @@ func createPageForContent(siteId string, parentPageId string, contentID string, 
 	}
 }
 
-func clone(id string) {
+func clone(id string, sourceAcousticAuthApiHost string, sourceAcousticAPIKey string, targetAcousticAuthApiHost string, targetAcousticAPIKey string) {
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-	copyUseCase := csv.NewContentCopyUserCase(os.Getenv("AcousticAPIURL"))
+	copyUseCase := csv.NewContentCopyUserCase(sourceAcousticAuthApiHost, sourceAcousticAPIKey, targetAcousticAuthApiHost, targetAcousticAPIKey)
 
 	_, err := copyUseCase.CopyContent(id, "_CL:"+time.Now().Format(time.ANSIC))
 	if err != nil {
@@ -148,6 +148,10 @@ func execute() {
 	idToClone := flag.String("idToClone", "", "ID to clone")
 	contentIDForPage := flag.String("contentIDForPage", "", "Content ID to create page")
 	relativeUrlOfPage := flag.String("relativeUrlOfPage", "", "Relative URL of the page")
+	sourceAcousticAuthAPIHost := flag.String("sourceAcousticAPIUrl", "", "Source Acoustic  Host API")
+	sourceAcousticAPIKey := flag.String("sourceAcousticAPIKey", "", "Source Acoustic API Key")
+	targetAcousticAuthAPIHost := flag.String("targetAcousticAPIUrl", "", "Target Acoustic  Host API")
+	targetAcousticAPIKey := flag.String("targetAcousticAPIKey", "", "Target Acoustic API Key")
 	flag.Parse()
 
 	log.Info("feed location :" + *feedLocation)
@@ -161,6 +165,10 @@ func execute() {
 	log.Info("ID to clone :" + *idToClone)
 	log.Info("Content ID to create page :" + *contentIDForPage)
 	log.Info("Relative URL of the page :" + *relativeUrlOfPage)
+	log.Info("Source Acoustic Auth API Host :" + *sourceAcousticAuthAPIHost)
+	log.Info("Source Acoustic Auth API Key :" + *sourceAcousticAPIKey)
+	log.Info("Target Acoustic Auth API Host :" + *targetAcousticAuthAPIHost)
+	log.Info("Target Acoustic Auth API Key :" + *targetAcousticAPIKey)
 
 	if len(strings.TrimSpace(*contentOperation)) == 0 {
 		log.Error("Please provide the Content Operation (CREATE for create , UPDATE for update , READ for read) ")
@@ -191,6 +199,26 @@ func execute() {
 
 	if len(strings.TrimSpace(*idToClone)) == 0 && *contentOperation == "CLONE_CONTENT" {
 		log.Error("Please provide the Content ID")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*sourceAcousticAuthAPIHost)) == 0 && *contentOperation == "CLONE_CONTENT" {
+		log.Error("Please provide the Source Acoustic auth API host")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*sourceAcousticAPIKey)) == 0 && *contentOperation == "CLONE_CONTENT" {
+		log.Error("Please provide the Source Acoustic auth API Key")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*targetAcousticAuthAPIHost)) == 0 && *contentOperation == "CLONE_CONTENT" {
+		log.Error("Please provide the Target Acoustic auth API host")
+		os.Exit(1)
+	}
+
+	if len(strings.TrimSpace(*targetAcousticAPIKey)) == 0 && *contentOperation == "CLONE_CONTENT" {
+		log.Error("Please provide the Target Acoustic auth API Key")
 		os.Exit(1)
 	}
 
@@ -232,7 +260,7 @@ func execute() {
 	} else if *contentOperation == "CREATE_SITE_PAGE_FOR_CONTENT" {
 		createPageForContent(*siteId, *parentPageID, *contentIDForPage, *contentTypeID, *relativeUrlOfPage)
 	} else if *contentOperation == "CLONE_CONTENT" {
-		clone(*idToClone)
+		clone(*idToClone, *sourceAcousticAuthAPIHost, *sourceAcousticAPIKey, *targetAcousticAuthAPIHost, *targetAcousticAPIKey)
 	} else {
 		log.Error("Please provide the Content Operation (CREATE for create , UPDATE for update , READ for read , provided operation : {}", *contentOperation)
 		os.Exit(1)

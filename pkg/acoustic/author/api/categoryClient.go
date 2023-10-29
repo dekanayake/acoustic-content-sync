@@ -55,8 +55,9 @@ type categoryClient struct {
 }
 
 func NewCategoryClient(acousticApiUrl string) CategoryClient {
+	apiKey := env.AcousticAPIKey()
 	return &categoryClient{
-		c:              Connect(),
+		c:              Connect(apiKey),
 		acousticApiUrl: acousticApiUrl,
 	}
 }

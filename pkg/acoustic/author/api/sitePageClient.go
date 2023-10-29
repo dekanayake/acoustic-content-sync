@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/dekanayake/acoustic-content-sync/pkg/errors"
 	"github.com/thoas/go-funk"
 	"gopkg.in/resty.v1"
@@ -24,9 +25,10 @@ type sitePageClient struct {
 }
 
 func NewSitePageClient(acousticApiUrl string) SitePageClient {
+	apiKey := env.AcousticAPIKey()
 	return &sitePageClient{
-		c1:             Connect(),
-		c2:             Connect(),
+		c1:             Connect(apiKey),
+		c2:             Connect(apiKey),
 		acousticApiUrl: acousticApiUrl,
 	}
 }
