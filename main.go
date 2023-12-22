@@ -32,7 +32,11 @@ func execute() {
 
 	cmdProcessor := command.NewCommandActionProcessor()
 	errorHandling := logrus.PkgErrorEntry{Entry: log.WithField("", "")}
-	err = cmdProcessor.Execute()
+	cmd, err := cmdProcessor.GetCommandToExecute()
+	if err != nil {
+		errorHandling.WithError(err).Panic(err)
+	}
+	err = cmd.Execute()
 	if err != nil {
 		errorHandling.WithError(err).Panic(err)
 	}

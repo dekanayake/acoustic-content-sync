@@ -6,6 +6,7 @@ import (
 	"github.com/dekanayake/acoustic-content-sync/pkg/env"
 	"github.com/thoas/go-funk"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +19,7 @@ type Argument struct {
 	mandatory bool
 }
 
-type CommandHandler func(params map[string]*string) error
+type CommandHandler func(params map[string]string) error
 
 type Command struct {
 	name      string
@@ -31,18 +32,32 @@ type Action struct {
 	argumentValues map[string]string
 }
 
-func (command *Command) execute() error {
-	argumentValues := make(map[string]*string)
-	arguments := command.arguments
-	for _, argument := range arguments {
-		argValue := flag.String(argument.name, "", argument.usage)
-		flag.Parse()
-		if argument.mandatory && *argValue == "" {
-			log.Error("Please provide the " + argument.usage + ", usage: -" + argument.name + "=...")
-		}
-		log.Info(argument.usage + " : " + *argValue)
-		argumentValues[argument.name] = argValue
+func (command *Command) Execute() error {
+	operation_regx, err := regexp.Compile("-operation=.+")
+	if err != nil {
+		return err
 	}
+	arguments := command.arguments
+	argumentValues := make(map[string]string, len(arguments))
+	fs := flag.NewFlagSet("command", flag.ContinueOnError)
+	argumentValuesTemp := make(map[string]*string, len(arguments))
+	for _, argument := range arguments {
+		value := ""
+		fs.StringVar(&value, argument.name, "", argument.usage)
+		argumentValuesTemp[argument.name] = &value
+	}
+
+	programArgs := funk.Filter(os.Args[1:], func(arg string) bool {
+		return !operation_regx.MatchString(arg)
+	}).([]string)
+	fs.Parse(programArgs)
+	for _, argument := range arguments {
+		if argument.mandatory && argumentValues[argument.name] == "" {
+			log.Panic("Please provide the " + argument.usage + ", usage: -" + argument.name + "=...")
+		}
+		log.Info(argument.usage + " : " + argumentValues[argument.name])
+	}
+
 	return command.handler(argumentValues)
 }
 
@@ -50,28 +65,29 @@ type ActionProcessor struct {
 	commands []Command
 }
 
-func (processor *ActionProcessor) Execute() error {
-	contentOperation := flag.String("operation", "", "Operation")
-	flag.Parse()
+func (processor *ActionProcessor) GetCommandToExecute() (Command, error) {
+	fs := flag.NewFlagSet("command", flag.ContinueOnError)
+	contentOperation := fs.String("operation", "", "Operation")
+	fs.Parse(os.Args[1:])
 	if len(strings.TrimSpace(*contentOperation)) == 0 {
-		operations := funk.Reduce(processor.commands, func(acc string, cmd string) string {
-			return acc + cmd
+		operations := funk.Reduce(processor.commands, func(acc string, cmd Command) string {
+			return acc + ", " + cmd.name
 		}, "").(string)
 		log.Error("Please provide the Content Operation. Commands supported : " + operations)
 		os.Exit(1)
 	}
 
-	matchedContentOperationCmd := funk.Filter(processor.commands, func(command Command) bool {
+	matchedContentOperationCmd := funk.Find(processor.commands, func(command Command) bool {
 		return command.name == *contentOperation
 	})
 
-	if matchedContentOperationCmd == "" {
+	if matchedContentOperationCmd == nil {
 		log.Error("Matching command not found for command :" + *contentOperation)
 		os.Exit(1)
 	}
 
 	command := matchedContentOperationCmd.(Command)
-	return command.execute()
+	return command, nil
 
 }
 
@@ -169,8 +185,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return createOrUpdateContents(*params["feedLocation"], *params["configLocation"], *params["acousticLibraryID"], *params["contentTypeID"])
+		handler: func(params map[string]string) error {
+			return createOrUpdateContents(params["feedLocation"], params["configLocation"], params["acousticLibraryID"], params["contentTypeID"])
 		},
 	}
 
@@ -198,8 +214,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return createOrUpdateContents(*params["feedLocation"], *params["configLocation"], *params["acousticLibraryID"], *params["contentTypeID"])
+		handler: func(params map[string]string) error {
+			return createOrUpdateContents(params["feedLocation"], params["configLocation"], params["acousticLibraryID"], params["contentTypeID"])
 		},
 	}
 
@@ -227,8 +243,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return readContents(*params["feedLocation"], *params["configLocation"], *params["acousticLibraryID"], *params["contentTypeID"])
+		handler: func(params map[string]string) error {
+			return readContents(params["feedLocation"], params["configLocation"], params["acousticLibraryID"], params["contentTypeID"])
 		},
 	}
 
@@ -251,8 +267,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return createCategories(*params["categoryName"], *params["feedLocation"], *params["configLocation"])
+		handler: func(params map[string]string) error {
+			return createCategories(params["categoryName"], params["feedLocation"], params["configLocation"])
 		},
 	}
 
@@ -285,8 +301,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return createSitePages(*params["siteId"], *params["parentPageID"], *params["contentTypeID"], *params["feedLocation"], *params["configLocation"])
+		handler: func(params map[string]string) error {
+			return createSitePages(params["siteId"], params["parentPageID"], params["contentTypeID"], params["feedLocation"], params["configLocation"])
 		},
 	}
 
@@ -319,8 +335,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return createPageForContent(*params["siteId"], *params["parentPageID"], *params["contentIDForPage"], *params["contentTypeID"], *params["relativeUrlOfPage"])
+		handler: func(params map[string]string) error {
+			return createPageForContent(params["siteId"], params["parentPageID"], params["contentIDForPage"], params["contentTypeID"], params["relativeUrlOfPage"])
 		},
 	}
 
@@ -353,8 +369,8 @@ func NewCommandActionProcessor() *ActionProcessor {
 				mandatory: true,
 			},
 		},
-		handler: func(params map[string]*string) error {
-			return clone(*params["idToClone"], *params["sourceAcousticAuthAPIHost"], *params["sourceAcousticAPIKey"], *params["targetAcousticAuthAPIHost"], *params["targetAcousticAPIKey"])
+		handler: func(params map[string]string) error {
+			return clone(params["idToClone"], params["sourceAcousticAuthAPIHost"], params["sourceAcousticAPIKey"], params["targetAcousticAuthAPIHost"], params["targetAcousticAPIKey"])
 		},
 	}
 
